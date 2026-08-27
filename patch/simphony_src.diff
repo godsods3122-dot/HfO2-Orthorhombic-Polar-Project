@@ -1,0 +1,900 @@
+diff --git a/src/ek_bulk.f90 b/src/ek_bulk.f90
+index 5b19076..8318178 100644
+--- a/src/ek_bulk.f90
++++ b/src/ek_bulk.f90
+@@ -66,24 +66,13 @@ subroutine ek_bulk_line
+             !This ensures charge neutrality, although it shouldn't be necessary
+             !call impose_ASR_on_eff_charges(Origin_cell%Num_atoms,Origin_cell%Atom_position_direct,Born_Charge)
+             !
+-            if(added_LR_in_Real_Space)then
+-               do iR=1,Nrpts
+-                  ia=irvec(1,iR)
+-                  ib=irvec(2,iR)
+-                  ic=irvec(3,iR)
+-                  R = irvec(:,iR)
+-                  mat1 = 0.0d0
+-                  call FT_long_range_to_R(R,LOTO_grid1,LOTO_grid2,LOTO_grid3,mat1,     &
+-                                          Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1),  &
+-                                          Born_Charge(:,:,:), Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
+-                                          Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+-                  
+-                  HmnR(:,:,iR) = HmnR(:,:,iR)-mat1!/Nrpts
+-                  added_LR_in_Real_Space = .false.
+-               end do   
+-               
+-            end if
++            !> supply this segment's direction for the Gamma LO-TO limit
++            LOTO_qdir_run(:)= k3points_qdir(:, ik)
++            LOTO_qdir_run_set= .true.
+             call ham_bulk_LOTO(k, Hamk_bulk)
++            !> clear immediately so the direction cannot leak into any other
++            !> routine (3D grids, WCC, ...) that does not supply one
++            LOTO_qdir_run_set= .false.
+          else
+             call ham_bulk_latticegauge(k, Hamk_bulk)
+            !call ham_bulk_atomicgauge(k, Hamk_bulk)
+@@ -947,7 +936,13 @@ subroutine ek_bulk_plane
+       else
+          !> deal with phonon system
+          if (index(Particle,'phonon')/=0.and.LOTO_correction) then
++            !> supply this segment's direction for the Gamma LO-TO limit
++            LOTO_qdir_run(:)= k3points_qdir(:, ik)
++            LOTO_qdir_run_set= .true.
+             call ham_bulk_LOTO(k, Hamk_bulk)
++            !> clear immediately so the direction cannot leak into any other
++            !> routine (3D grids, WCC, ...) that does not supply one
++            LOTO_qdir_run_set= .false.
+          else
+             call ham_bulk_latticegauge(k, Hamk_bulk)
+            !call ham_bulk_atomicgauge(k, Hamk_bulk)
+@@ -2796,7 +2791,13 @@ subroutine ek_bulk_mengyu
+       else
+          !> deal with phonon system
+          if (index(Particle,'phonon')/=0.and.LOTO_correction) then
++            !> supply this segment's direction for the Gamma LO-TO limit
++            LOTO_qdir_run(:)= k3points_qdir(:, ik)
++            LOTO_qdir_run_set= .true.
+             call ham_bulk_LOTO(k, Hamk_bulk)
++            !> clear immediately so the direction cannot leak into any other
++            !> routine (3D grids, WCC, ...) that does not supply one
++            LOTO_qdir_run_set= .false.
+          else
+             call ham_bulk_latticegauge    (k, Hamk_bulk)
+             Hamk_bulk= Hamk_bulk/eV2Hartree
+diff --git a/src/ek_ribbon.f90 b/src/ek_ribbon.f90
+index 92de89b..d151df7 100644
+--- a/src/ek_ribbon.f90
++++ b/src/ek_ribbon.f90
+@@ -99,24 +99,9 @@
+      iu= (NumOccupied+2)*Nslab1*Nslab2
+      mdim=iu-il+1
+ 
+-     if((LOTO_correction).and.(.not.added_LR_in_Real_Space))then
+-         do iR=1,Nrpts
+-            ia=irvec(1,iR)
+-            ib=irvec(2,iR)
+-            ic=irvec(3,iR)
+-            R = ia*Origin_cell%Rua + ib*Origin_cell%Rub + ic*Origin_cell%Ruc
+-            R = R/Origin_cell%cell_parameters(1)
+-            R = irvec(:,iR)
+-            mat1 = 0.0d0
+-            call FT_long_range_to_R(R,LOTO_grid1,LOTO_grid2,LOTO_grid3,mat1,     &
+-                                    Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1),  &
+-                                    Born_Charge(:,:,:), Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
+-                                    Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+-            HmnR(:,:,iR) = HmnR(:,:,iR)+mat1!/Nrpts
+-            added_LR_in_Real_Space = .true.
+-         end do   
+-         
+-      end if
++     !> Long-range term is built once into HmnR_LR (no mutation of HmnR)
++     call ensure_LR_realspace()
++
+ 
+      if (cpuid==0) write(stdout, *)'number of bands calculating: ',mdim
+ 
+diff --git a/src/ek_slab.f90 b/src/ek_slab.f90
+index d3119a1..49e723d 100644
+--- a/src/ek_slab.f90
++++ b/src/ek_slab.f90
+@@ -70,24 +70,9 @@
+      time_start= time_start0
+      time_end  = time_start0
+ 
+-     if((LOTO_correction).and.(.not.added_LR_in_Real_Space))then
+-         do iR=1,Nrpts
+-            ! ia=irvec(1,iR)
+-            ! ib=irvec(2,iR)
+-            ! ic=irvec(3,iR)
+-            ! R = ia*Origin_cell%Rua + ib*Origin_cell%Rub + ic*Origin_cell%Ruc
+-            ! R = R/Origin_cell%cell_parameters(1)
+-            R = irvec(:,iR)
+-            mat1 = 0.0d0
+-            call FT_long_range_to_R(R,LOTO_grid1,LOTO_grid2,LOTO_grid3,mat1,     &
+-                                    Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1),  &
+-                                    Born_Charge(:,:,:), Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
+-                                    Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+-            HmnR(:,:,iR) = HmnR(:,:,iR)+mat1!/Nrpts
+-            added_LR_in_Real_Space = .true.
+-         end do   
+-         
+-      end if
++     !> Long-range term is built once into HmnR_LR (no mutation of HmnR)
++     call ensure_LR_realspace()
++
+ 
+      do i= 1+cpuid, knv2, num_cpu
+         if (cpuid==0.and. mod(i/num_cpu, 4)==0) &
+@@ -100,7 +85,13 @@
+ 
+         k= k2_path(i, :)
+ 
++        !> supply this surface-BZ segment's direction for the Gamma LO-TO limit
++        LOTO_qdir_run(:)= k2points_qdir(i,1)*Cell_defined_by_surface%Rua(:) &
++                        + k2points_qdir(i,2)*Cell_defined_by_surface%Rub(:)
++        LOTO_qdir_run_set= .true.
++
+         call ham_slab(k,Chamk)
++        LOTO_qdir_run_set= .false.
+ 
+ 
+         if (apply_ASR) then
+diff --git a/src/fermiarc.f90 b/src/fermiarc.f90
+index 3b16d5a..90efdfb 100644
+--- a/src/fermiarc.f90
++++ b/src/fermiarc.f90
+@@ -207,23 +207,9 @@
+         k(2)= k12(2, ikp)
+ 
+         call now(time1)
+-        if((LOTO_correction).and.(.not.added_LR_in_Real_Space))then
+-            do iR=1,Nrpts
+-               ia=irvec(1,iR)
+-               ib=irvec(2,iR)
+-               ic=irvec(3,iR)
+-               R = ia*Origin_cell%Rua + ib*Origin_cell%Rub + ic*Origin_cell%Ruc
+-               R = R/Origin_cell%cell_parameters(1)
+-               R = irvec(:,iR)
+-               mat1 = 0.0d0
+-               call FT_long_range_to_R(R,LOTO_grid1,LOTO_grid2,LOTO_grid3,mat1,     &
+-                                       Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1),  &
+-                                       Born_Charge(:,:,:), Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
+-                                       Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+-               HmnR(:,:,iR) = HmnR(:,:,iR)+mat1!/Nrpts
+-               added_LR_in_Real_Space = .true.
+-            end do   
+-        end if
++     !> Long-range term is built once into HmnR_LR (no mutation of HmnR)
++     call ensure_LR_realspace()
++
+ 
+         call ham_qlayer2qlayer(k,H00,H01)
+         call now(time2)
+diff --git a/src/ham_bulk.f90 b/src/ham_bulk.f90
+index 8176776..629a2e3 100644
+--- a/src/ham_bulk.f90
++++ b/src/ham_bulk.f90
+@@ -523,7 +523,7 @@ subroutine dHdk_latticegauge_Ham(k, eigval, eigvec, Vmn_Ham)
+    return
+ end subroutine dHdk_latticegauge_Ham
+ 
+-subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk,tau,zeu,rec_lattice,natoms, map2atoms) 
++subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto2d_arg,sign,Hamk_bulk,tau,zeu,rec_lattice,natoms, map2atoms) 
+    ! This subroutine computes the rigid-ion (long-range) term for q
+    ! X. Gonze et al, PRB 50. 13035 (1994) 
+    ! the Ewald parameter alpha must be large enough to
+@@ -548,7 +548,7 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+         tau(3,natoms),  & ! atom position
+         zeu(Origin_cell%Num_atoms,3,3), & ! Effective charges
+         rec_lattice(3,3)
+-   logical :: loto_2d ! 2D LOTO correction 
++   logical :: loto2d_arg ! 2D LOTO correction 
+ 
+    
+    ! local variables
+@@ -575,8 +575,16 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+    e2 = 2.0d0
+ 
+    
+-   gmax= 14.0d0
+-   alph= 1.0d0
++   !> Ewald splitting parameter. Runtime-selectable instead of hardcoded:
++   !> LOTO_alph < 0 uses QE's cell-dependent value alph = (alat/2pi)^2
++   !> (QE gitlab issue #601), which fixes the physical Ewald parameter
++   !> independently of the cell size.
++   gmax= LOTO_gmax
++   if (LOTO_alph > 0d0) then
++      alph= LOTO_alph
++   else
++      alph= (Origin_cell%cell_parameters(1)/twopi)**2
++   endif
+    geg = gmax*alph*4.0d0
+ 
+    
+@@ -606,8 +614,11 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+                    (sqrt (rec_lattice (1, 3) **2 + rec_lattice (2, 3) **2 + rec_lattice (3, 3) **2) )) + 1
+    endif
+    ! TESTING
+-   if (loto_2d) then 
+-      fac = sign*4*twopi/Origin_cell%CellVolume*0.5d0/rec_lattice(3,3)!*alat 
++   if (loto2d_arg) then 
++      !> QE rgd_blk: fac = (sign*e2*tpi)/(omega*bg(3,3)/alat), and facgd carries
++      !> an extra (tpi/alat). The two alat factors cancel, leaving an overall
++      !> e2*(2pi)^2/(V*bg33). The original line was missing one factor of 2*pi.
++      fac = sign*e2*twopi*twopi/Origin_cell%CellVolume/rec_lattice(3,3)
+       reff=0.0d0
+       do i=1,2
+          do j=1,2
+@@ -630,7 +641,7 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+             g2 = m1*rec_lattice(2,1) + m2*rec_lattice(2,2) + m3*rec_lattice(2,3)
+             g3 = m1*rec_lattice(3,1) + m2*rec_lattice(3,2) + m3*rec_lattice(3,3)
+ 
+-            if (loto_2d) then 
++            if (loto2d_arg) then 
+                geg = g1**2 + g2**2 + g3**2
+                r=0.0d0
+                gp2=g1**2+g2**2
+@@ -646,7 +657,7 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+          
+             if (geg > 0.0d0 .and. geg/alph/4.0d0 < gmax ) then
+                
+-               if (loto_2d) then 
++               if (loto2d_arg) then 
+                facgd = fac*exp(-geg/alph/4.0d0)/SQRT(geg)/(1.0+r*SQRT(geg)) 
+                else
+                facgd = fac*exp(-geg/alph/4.0d0)/geg
+@@ -661,9 +672,11 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+                                        g3 * (tau(3,na)-tau(3,nb)))
+                      zcg(:) = g1*zeu(nb,1,:) + g2*zeu(nb,2,:) + g3*zeu(nb,3,:)
+ 
+-                     fnat(:) = fnat(:) + zcg(:)*exp(zi*arg)
++                     fnat(:) = fnat(:) + zcg(:)*COS(arg)
+                   end do
+                   fmtx = MATMUL(RESHAPE(zag, (/3,1/)), RESHAPE(fnat, (/1,3/)))
++                  ! QE rgd_blk과 동일하게: 실공간 dipole 자기항의 에르미트성을 강제하기 위한 대칭화
++                  fmtx = (fmtx + TRANSPOSE(fmtx)) / 2.d0
+ 
+                   do j=1,3
+                      do i=1,3
+@@ -680,7 +693,7 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+             g2 = g2 + q(2)
+             g3 = g3 + q(3)
+ 
+-            if (loto_2d) then
++            if (loto2d_arg) then
+                geg = g1**2+g2**2+g3**2
+                r=0.0d0
+                gp2=g1**2+g2**2
+@@ -696,7 +709,7 @@ subroutine long_range_phonon_interaction(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk
+             
+             if (geg > 0.0_DP .and. geg/alph/4.0_DP < gmax ) then
+                
+-               if (loto_2d) then 
++               if (loto2d_arg) then 
+                facgd = fac*exp(-geg/alph/4.0d0)/SQRT(geg)/(1.0+r*SQRT(geg))
+                else
+                facgd = fac*exp(-geg/alph/4.0d0)/geg
+@@ -974,7 +987,7 @@ end subroutine long_range_phonon_interaction_real_space
+ 
+ 
+ 
+-subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,Hamk_bulk,tau,zeu,rec_lattice,natoms, map2atoms, qdir) 
++subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto2d_arg,sign,Hamk_bulk,tau,zeu,rec_lattice,natoms, map2atoms, qdir) 
+    ! This subroutine computes the rigid-ion (long-range) term for q
+    ! X. Gonze et al, PRB 50. 13035 (1994) 
+    ! the Ewald parameter alpha must be large enough to
+@@ -1000,7 +1013,7 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+         zeu(Origin_cell%Num_atoms,3,3), & ! Effective charges
+         rec_lattice(3,3),&
+         qdir(3)
+-   logical :: loto_2d ! 2D LOTO correction 
++   logical :: loto2d_arg ! 2D LOTO correction 
+ 
+    
+    ! local variables
+@@ -1032,8 +1045,16 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+    
+ 
+    
+-   gmax= 14.0d0
+-   alph= 1.0d0
++   !> Ewald splitting parameter. Runtime-selectable instead of hardcoded:
++   !> LOTO_alph < 0 uses QE's cell-dependent value alph = (alat/2pi)^2
++   !> (QE gitlab issue #601), which fixes the physical Ewald parameter
++   !> independently of the cell size.
++   gmax= LOTO_gmax
++   if (LOTO_alph > 0d0) then
++      alph= LOTO_alph
++   else
++      alph= (Origin_cell%cell_parameters(1)/twopi)**2
++   endif
+    geg = gmax*alph*4.0d0
+ 
+    
+@@ -1058,8 +1079,11 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+                    (sqrt (rec_lattice (1, 3) **2 + rec_lattice (2, 3) **2 + rec_lattice (3, 3) **2) )) + 1
+    endif
+    ! TESTING
+-   if (loto_2d) then 
+-      fac = sign*4*twopi/Origin_cell%CellVolume*0.5d0/rec_lattice(3,3)!*alat 
++   if (loto2d_arg) then 
++      !> QE rgd_blk: fac = (sign*e2*tpi)/(omega*bg(3,3)/alat), and facgd carries
++      !> an extra (tpi/alat). The two alat factors cancel, leaving an overall
++      !> e2*(2pi)^2/(V*bg33). The original line was missing one factor of 2*pi.
++      fac = sign*e2*twopi*twopi/Origin_cell%CellVolume/rec_lattice(3,3)
+       reff=0.0d0
+       do i=1,2
+          do j=1,2
+@@ -1092,7 +1116,7 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+                g3 = qdir(3)
+             end if
+ 
+-            if (loto_2d) then 
++            if (loto2d_arg) then 
+                geg = g1**2 + g2**2 + g3**2
+                r=0.0d0
+                gp2=g1**2+g2**2
+@@ -1108,7 +1132,7 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+          
+             if (geg > 0.0d0 .and. geg/alph/4.0d0 < gmax ) then
+                
+-               if (loto_2d) then 
++               if (loto2d_arg) then 
+                facgd = fac*exp(-geg/alph/4.0d0)/SQRT(geg)/(1.0+r*SQRT(geg)) 
+                else
+                facgd = fac*exp(-geg/alph/4.0d0)/geg
+@@ -1148,7 +1172,7 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+             end if
+ 
+ 
+-            if (loto_2d) then
++            if (loto2d_arg) then
+                geg = g1**2+g2**2+g3**2
+                r=0.0d0
+                gp2=g1**2+g2**2
+@@ -1164,7 +1188,7 @@ subroutine long_range_phonon_interaction_phonopy(nfr1,nfr2,nfr3,q,loto_2d,sign,H
+             
+             if (geg > 0.0_DP .and. geg/alph/4.0_DP < gmax ) then
+                
+-               if (loto_2d) then 
++               if (loto2d_arg) then 
+                facgd = fac*exp(-geg/alph/4.0d0)/SQRT(geg)/(1.0+r*SQRT(geg))
+                else
+                facgd = fac*exp(-geg/alph/4.0d0)/geg
+@@ -1668,7 +1692,7 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+    real(dp) :: kdotr
+ 
+    ! wave vector 
+-   real(Dp) :: k(3), keps(3) = (/eps12,eps12,eps12/), q(3)
++   real(Dp) :: k(3), keps(3) = (/eps12,eps12,eps12/), q(3), qd_use(3)
+ 
+    ! coordinates of R vector
+    real(Dp) :: R(3)
+@@ -1763,13 +1787,18 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+    
+    
+    mat2 = 0.0d0
+-   if (package.eq.'Phonopy')then
++   if (index(LOTO_method,'phonopy')/=0) then
++      !> phonopy-compatible Gonze partition (gonze_nac.f90). Takes precedence
++      !> over the Package switch, which selects between the two QE-lineage
++      !> implementations only.
++      call long_range_phonon_interaction_gonze(k, mat2)
++   else if (package.eq.'Phonopy')then
+       ! UNDER TESTING
+       rec_lattice = Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi) !Transform to cartesian
+       
+       q(1) = k(1)*rec_lattice(1,1) + k(2)*rec_lattice(1,2) + k(3)*rec_lattice(1,3)
+-      q(2) = k(1)*rec_lattice(1,2) + k(2)*rec_lattice(2,2) + k(3)*rec_lattice(2,3)
+-      q(3) = k(1)*rec_lattice(1,3) + k(2)*rec_lattice(3,2) + k(3)*rec_lattice(3,3) !Transform to cartesian
++      q(2) = k(1)*rec_lattice(2,1) + k(2)*rec_lattice(2,2) + k(3)*rec_lattice(2,3)
++      q(3) = k(1)*rec_lattice(3,1) + k(2)*rec_lattice(3,2) + k(3)*rec_lattice(3,3) !Transform to cartesian
+       call long_range_phonon_interaction_phonopy(0,0,0,q,.false.,1.0d0,mat2,tau,zeu,rec_lattice,Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3),keps)
+ 
+       ! do mm = 1, Num_wann
+@@ -1797,8 +1826,8 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+       rec_lattice = Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi) !Transform to cartesian
+       
+       q(1) = k(1)*rec_lattice(1,1) + k(2)*rec_lattice(1,2) + k(3)*rec_lattice(1,3)
+-      q(2) = k(1)*rec_lattice(1,2) + k(2)*rec_lattice(2,2) + k(3)*rec_lattice(2,3)
+-      q(3) = k(1)*rec_lattice(1,3) + k(2)*rec_lattice(3,2) + k(3)*rec_lattice(3,3) !Transform to cartesian
++      q(2) = k(1)*rec_lattice(2,1) + k(2)*rec_lattice(2,2) + k(3)*rec_lattice(2,3)
++      q(3) = k(1)*rec_lattice(3,1) + k(2)*rec_lattice(3,2) + k(3)*rec_lattice(3,3) !Transform to cartesian
+       
+       time_start= 0d0
+       time_end= 0d0
+@@ -1809,9 +1838,26 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+ 
+       !call print_time_cost(time_start,time_end, 'computing DD interaction' )
+ 
+-      if (abs((k(1)**2+k(2)**2+k(3)**2)).le.eps12)then  !> skip k=0
++      if (abs((k(1)**2+k(2)**2+k(3)**2)).le.eps12)then  !> exactly at Gamma
+          atGamma=.true.
+ 
++         !> The non-analytic LO-TO limit at q=0 is direction dependent, so the
++         !> direction must be specified explicitly rather than inherited from
++         !> whichever k point this MPI rank happened to process before (not
++         !> reproducible under different -np, meaningless on 3D grids).
++         !> LOTO_qdir is given in reduced coordinates; convert to cartesian.
++         if (LOTO_qdir_run_set) then
++            qd_use(:) = LOTO_qdir_run(:)
++         else
++            qd_use(:) = LOTO_qdir(:)
++         endif
++         keps(1) = qd_use(1)*rec_lattice(1,1) + qd_use(2)*rec_lattice(1,2) + qd_use(3)*rec_lattice(1,3)
++         keps(2) = qd_use(1)*rec_lattice(2,1) + qd_use(2)*rec_lattice(2,2) + qd_use(3)*rec_lattice(2,3)
++         keps(3) = qd_use(1)*rec_lattice(3,1) + qd_use(2)*rec_lattice(3,2) + qd_use(3)*rec_lattice(3,3)
++         if (SQRT(keps(1)**2+keps(2)**2+keps(3)**2) > eps12) then
++            keps(:) = keps(:)/SQRT(keps(1)**2+keps(2)**2+keps(3)**2)*eps3
++         endif
++
+          qeq = (keps(1)*(Diele_Tensor(1,1)*keps(1)+Diele_Tensor(1,2)*keps(2)+Diele_Tensor(1,3)*keps(3))+    &
+                keps(2)*(Diele_Tensor(2,1)*keps(1)+Diele_Tensor(2,2)*keps(2)+Diele_Tensor(2,3)*keps(3))+    &
+                keps(3)*(Diele_Tensor(3,1)*keps(1)+Diele_Tensor(3,2)*keps(2)+Diele_Tensor(3,3)*keps(3)))
+@@ -1824,6 +1870,11 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+       
+       
+       
++      !> The gonze implementation already contains the non-analytic q->0 term
++      !> (it is applied inside gonze_sum via qdir), so the QE-style term below
++      !> must not be added on top of it.
++      if (atGamma .and. index(LOTO_method,'phonopy')/=0) atGamma = .false.
++
+       if (atGamma) then
+          do pp = 1,Origin_cell%Num_atoms
+             do qq = 1,Origin_cell%Num_atoms
+@@ -1853,7 +1904,6 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+    
+ 
+ 
+-
+    do ii=1,Num_wann
+       do jj=1, Num_wann
+          pp = Origin_cell%spinorbital_to_atom_index(ii)
+@@ -1889,20 +1939,10 @@ subroutine ham_bulk_LOTO(k,Hamk_bulk)
+ 
+ 
+ 
+-   ! preserve previous k point for NAC calculation in Gamma so as to not have unnecessary discontinuities
+-   if ((k(1).ne.0.0d0) .or. (k(2).ne.0.0d0) .or. (k(3).ne.0.0d0)) then
+-      !rec_lattice = Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi)
+-      keps(1) = k(1)*Origin_cell%reciprocal_lattice(1,1) + k(2)*Origin_cell%reciprocal_lattice(1,2) + k(3)*Origin_cell%reciprocal_lattice(1,3)
+-      keps(2) = k(1)*Origin_cell%reciprocal_lattice(2,1) + k(2)*Origin_cell%reciprocal_lattice(2,2) + k(3)*Origin_cell%reciprocal_lattice(2,3)
+-      keps(3) = k(1)*Origin_cell%reciprocal_lattice(3,1) + k(2)*Origin_cell%reciprocal_lattice(3,2) + k(3)*Origin_cell%reciprocal_lattice(3,3)
+-      keps = keps*Origin_cell%cell_parameters(1)/(twopi)
+-      do ii=1,3
+-         if (abs(keps(ii)).le.eps12/1000)then
+-            keps(ii) = 0.0d0
+-         end if
+-      end do  
+-      keps(:) = keps(:)/SQRT(keps(1)**2+keps(2)**2+keps(3)**2)*eps3
+-   end if
++   !> NOTE: the previous code cached the last processed k point here and reused
++   !> its direction at Gamma. That made the Gamma result depend on k-point
++   !> ordering and on the MPI rank layout (k points are strided over ranks),
++   !> so it is removed. The Gamma direction now comes from LOTO_qdir.
+ 
+ 
+ 
+diff --git a/src/ham_qlayer2qlayer.f90 b/src/ham_qlayer2qlayer.f90
+index 0ee48a0..d158827 100644
+--- a/src/ham_qlayer2qlayer.f90
++++ b/src/ham_qlayer2qlayer.f90
+@@ -240,7 +240,7 @@
+      real(Dp),intent(in) :: k(2)
+      
+      ! wave vector transformed as if it where 3D system for lrange calculation
+-     real(Dp) :: k3d(3), keps(3) = (/eps12,eps12,eps12/)
++     real(Dp) :: k3d(3), keps(3) = (/eps12,eps12,eps12/), qd_use(3)
+ 
+      ! H00 Hamiltonian between nearest neighbour-quintuple-layers
+ 
+@@ -291,8 +291,19 @@
+      k3d(:) = k(1)*Cell_defined_by_surface%reciprocal_lattice(:,1) + k(2)*Cell_defined_by_surface%reciprocal_lattice(:,2) 
+      k3d = k3d*Cell_defined_by_surface%cell_parameters(1)/(twopi)
+      
+-     if (abs((k3d(1)**2+k3d(2)**2+k3d(3)**2)).le.eps12)then  !> skip k=0
++     if (abs((k3d(1)**2+k3d(2)**2+k3d(3)**2)).le.eps12)then  !> exactly at surface Gamma
+          atGamma=.true.
++         !> gonze already includes the non-analytic q->0 term
++         if (index(LOTO_method,'phonopy')/=0) atGamma=.false.
++
++         !> Take the LO-TO direction from the current band-path segment
++         !> (phonopy's rule) instead of a hardcoded axis.
++         if (LOTO_qdir_run_set) then
++            qd_use(:)= LOTO_qdir_run(:)
++            if (sqrt(dot_product(qd_use,qd_use)) > eps12) then
++               keps(:)= qd_use(:)/sqrt(dot_product(qd_use,qd_use))*eps3
++            endif
++         endif
+ 
+          qeq = (keps(1)*(Diele_Tensor(1,1)*keps(1)+Diele_Tensor(1,2)*keps(2)+Diele_Tensor(1,3)*keps(3))+    &
+             keps(2)*(Diele_Tensor(2,1)*keps(1)+Diele_Tensor(2,2)*keps(2)+Diele_Tensor(2,3)*keps(3))+    &
+@@ -324,7 +335,7 @@
+       endif
+      
+    !   nac_correction= 0d0
+-   !   call long_range_phonon_interaction(0,0,0,k3d(:),.false.,1.0d0,mat1,  &
++   !   call long_range_phonon_interaction(0,0,0,k3d(:),LOTO_2D,1.0d0,mat1,  &
+    !        Cell_defined_by_surface%Atom_position_cart/Cell_defined_by_surface%cell_parameters(1),  &
+    !        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
+    !        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+@@ -381,10 +392,26 @@
+             
+             mat1 = 0d0
+             nac_correction= 0d0
+-            call long_range_phonon_interaction(0,0,0,k3d(:),.false.,1.0d0,mat1,  &
+-                  pos_cart_ic/Origin_cell%cell_parameters(1),  &
+-                  Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
+-                  Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++            if (index(LOTO_method,'phonopy')/=0) then
++               call long_range_phonon_interaction_gonze_cart(k3d(:), mat1, &
++                     pos_cart_ic/Origin_cell%cell_parameters(1), &
++                     Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                     Origin_cell%Num_atoms, Cell_defined_by_surface%cell_parameters(1))
++            else
++               !> nfr3=1 tells the G-sum that the third direction is not
++               !> periodic, so no G is summed along the surface normal.
++               if (LOTO_2D) then
++                  call long_range_phonon_interaction(0,0,1,k3d(:),.true.,1.0d0,mat1,  &
++                        pos_cart_ic/Origin_cell%cell_parameters(1),  &
++                        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++               else
++                  call long_range_phonon_interaction(0,0,0,k3d(:),LOTO_2D,1.0d0,mat1,  &
++                        pos_cart_ic/Origin_cell%cell_parameters(1),  &
++                        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++               endif
++            endif
+             
+             do ii=1,Num_wann
+                do jj=1, Num_wann
+@@ -394,12 +421,17 @@
+                end do
+             end do
+ 
++            !> If the long-range term was already folded into HmnR in real space
++            !> (paper Eq. 20, done once in ek_slab), adding it again per k here
++            !> would double count it.
++
++
+            kdotr=k(1)*new_ia+k(2)*new_ib
+            ratio=cos(2d0*pi*kdotr)+zi*sin(2d0*pi*kdotr)
+ 
+            Hij(inew_ic, 1:Num_wann, 1:Num_wann )&
+            = Hij(inew_ic, 1:Num_wann, 1:Num_wann )&
+-           + (HmnR(1:Num_wann,1:Num_wann,iR)+ nac_correction(1:Num_wann, 1:Num_wann)/counter)*ratio/ndegen(iR) 
++           + (HmnR(1:Num_wann,1:Num_wann,iR)+ HmnR_LRslab(1:Num_wann,1:Num_wann,iR))*ratio/ndegen(iR) 
+         endif
+ 
+      enddo
+@@ -608,7 +640,11 @@
+                if (abs((qingrid(1)**2+qingrid(2)**2+qingrid(3)**2)).ge.eps12)then
+                   dummy = 0.0d0
+                   qdotr = (n1)/dble(nkft1)*r(1) + (n2)/dble(nkft2)*r(2) + (n3)/dble(nkft3)*r(3)!qingrid(1)*r(1) + qingrid(2)*r(2) + qingrid(3)*r(3)
+-                  call long_range_phonon_interaction(0,0,0,qingrid,.false.,1.0d0,dummy,tau,zeu,rec_lattice,natoms, map2atoms)
++                  if (index(LOTO_method,'phonopy')/=0) then
++                     call long_range_phonon_interaction_gonze_cart(qingrid,dummy,tau,rec_lattice,natoms,Origin_cell%cell_parameters(1))
++                  else
++                     call long_range_phonon_interaction(0,0,0,qingrid,LOTO_2D,1.0d0,dummy,tau,zeu,rec_lattice,natoms, map2atoms)
++                  endif
+                   expqdotr = cos(2d0*pi*qdotr)-zi*sin(2d0*pi*qdotr)!exp(-zi*qdotr*twopi)
+                   sumoverq = sumoverq+dummy*expqdotr
+                   totalnknumber = totalnknumber + 1
+@@ -724,6 +760,7 @@
+  
+      !> k times Born charge
+      logical :: atGamma
++     real(dp) :: qd_use(3)
+      real(dp) :: qeq, temp1(3), temp2, zag(3), zbg(3),  keps(3) = (/eps12,eps12,0.0d0/), &
+                   R1(3), R2(3),R3(3), R12_cross(3),angle_t
+      complex(dp) :: nac_q
+@@ -750,9 +787,19 @@
+      
+      k3d = k3d*Cell_defined_by_surface%cell_parameters(1)/(twopi)
+      
+-     if (abs((k3d(1)**2+k3d(2)**2+k3d(3)**2)).le.eps12)then  !> skip k=0
++     if (abs((k3d(1)**2+k3d(2)**2+k3d(3)**2)).le.eps12)then  !> exactly at surface Gamma
+          atGamma=.true.
+-         
++         !> gonze already includes the non-analytic q->0 term
++         if (index(LOTO_method,'phonopy')/=0) atGamma=.false.
++
++         !> Take the LO-TO direction from the current band-path segment
++         if (LOTO_qdir_run_set) then
++            qd_use(:)= LOTO_qdir_run(:)
++            if (sqrt(dot_product(qd_use,qd_use)) > eps12) then
++               keps(:)= qd_use(:)/sqrt(dot_product(qd_use,qd_use))*eps3
++            endif
++         endif
++
+          qeq = (keps(1)*(Diele_Tensor(1,1)*keps(1)+Diele_Tensor(1,2)*keps(2)+Diele_Tensor(1,3)*keps(3))+    &
+             keps(2)*(Diele_Tensor(2,1)*keps(1)+Diele_Tensor(2,2)*keps(2)+Diele_Tensor(2,3)*keps(3))+    &
+             keps(3)*(Diele_Tensor(3,1)*keps(1)+Diele_Tensor(3,2)*keps(2)+Diele_Tensor(3,3)*keps(3)))
+@@ -785,7 +832,7 @@
+       
+    !   mat1 = 0d0
+    !   nac_correction= 0d0
+-   !   call long_range_phonon_interaction(0,0,0,k3d(:),.false.,1.0d0,mat1,  &
++   !   call long_range_phonon_interaction(0,0,0,k3d(:),LOTO_2D,1.0d0,mat1,  &
+    !        Cell_defined_by_surface%Atom_position_cart/Cell_defined_by_surface%cell_parameters(1),  &
+    !        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
+    !        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+@@ -843,10 +890,26 @@
+ 
+             mat1 = 0d0
+             nac_correction= 0d0
+-            call long_range_phonon_interaction(0,0,0,k3d(:),.false.,1.0d0,mat1,  &
+-                  pos_cart_ic/Origin_cell%cell_parameters(1),  &
+-                  Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
+-                  Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++            if (index(LOTO_method,'phonopy')/=0) then
++               call long_range_phonon_interaction_gonze_cart(k3d(:), mat1, &
++                     pos_cart_ic/Origin_cell%cell_parameters(1), &
++                     Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                     Origin_cell%Num_atoms, Cell_defined_by_surface%cell_parameters(1))
++            else
++               !> nfr3=1 tells the G-sum that the third direction is not
++               !> periodic, so no G is summed along the surface normal.
++               if (LOTO_2D) then
++                  call long_range_phonon_interaction(0,0,1,k3d(:),.true.,1.0d0,mat1,  &
++                        pos_cart_ic/Origin_cell%cell_parameters(1),  &
++                        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++               else
++                  call long_range_phonon_interaction(0,0,0,k3d(:),LOTO_2D,1.0d0,mat1,  &
++                        pos_cart_ic/Origin_cell%cell_parameters(1),  &
++                        Born_Charge(:,:,:), Cell_defined_by_surface%reciprocal_lattice*Cell_defined_by_surface%cell_parameters(1)/(twopi), &
++                        Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++               endif
++            endif
+             
+             do ii=1,Num_wann
+                do jj=1, Num_wann
+@@ -855,14 +918,18 @@
+                      nac_correction(ii,jj) = (mat1(ii,jj) + mat2(ii,jj)*(PwscftoTHz*eV2Hartree)**2)/SQRT(Atom_Mass(pp)*Atom_Mass(qq)) 
+                end do
+             end do
++
++            !> If the long-range term was already folded into HmnR in real space
++            !> (paper Eq. 20, done once in ek_slab), adding it again per k here
++            !> would double count it.
++
+            
+            kdotr=k(1)*new_ia+k(2)*new_ib
+            ratio=cos(2d0*pi*kdotr)+zi*sin(2d0*pi*kdotr)
+-            
+ 
+             Hij(inew_ic, 1:Num_wann, 1:Num_wann )&
+             = Hij(inew_ic, 1:Num_wann, 1:Num_wann )&
+-            + (HmnR(:,:,iR))*ratio/ndegen(iR)  +nac_correction(1:Num_wann, 1:Num_wann)/counter*ratio/ndegen(iR) 
++            + (HmnR(:,:,iR) + HmnR_LRslab(:,:,iR))*ratio/ndegen(iR)
+          endif
+ 
+      enddo
+@@ -992,3 +1059,37 @@
+ 
+      return
+   end subroutine 
++
++  !> Build the real-space long-range dipole term D^LR(R) once, into HmnR_LR.
++  !> Idempotent and free of any dependence on previously run calculations,
++  !> replacing the old scheme that mutated HmnR and tracked it with the global
++  !> flag added_LR_in_Real_Space.
++  subroutine ensure_LR_realspace()
++     use para
++     implicit none
++     integer :: iR
++     real(dp) :: R(3)
++     complex(dp), allocatable :: mat1(:, :)
++
++     if (.not. LOTO_correction) return
++     if (HmnR_LRslab_ready) return
++
++     if (.not. allocated(HmnR_LRslab)) allocate(HmnR_LRslab(Num_wann, Num_wann, Nrpts))
++     HmnR_LRslab = 0d0
++     allocate(mat1(Num_wann, Num_wann))
++
++     do iR = 1, Nrpts
++        R = irvec(:, iR)
++        mat1 = 0d0
++        call FT_long_range_to_R(R, LOTO_grid1, LOTO_grid2, LOTO_grid3, mat1, &
++             Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1), &
++             Born_Charge(:,:,:), &
++             Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
++             Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
++        HmnR_LRslab(:,:,iR) = mat1
++     end do
++
++     deallocate(mat1)
++     HmnR_LRslab_ready = .true.
++
++  end subroutine ensure_LR_realspace
+diff --git a/src/module.f90 b/src/module.f90
+index 45b53e4..1f98358 100644
+--- a/src/module.f90
++++ b/src/module.f90
+@@ -427,6 +427,14 @@
+      logical :: LandauLevel_B_calc  ! Flag for Hofstader butterfly
+      logical :: LOTO_correction  ! Flag for LOTO correction of phonon spectrum 
+      logical :: added_LR_in_Real_Space
++
++     !> Real-space long-range dipole term D^LR(R) for the slab/ribbon
++     !> construction of paper Eq. (20). Kept in its own array instead of being
++     !> folded into (and later subtracted from) the shared HmnR, so that the
++     !> result no longer depends on which calculations ran before in the same
++     !> run. Built once by ensure_LR_realspace().
++     complex(dp), allocatable :: HmnR_LRslab(:, :, :)
++     logical :: HmnR_LRslab_ready = .false.
+      logical :: apply_ASR  ! Flag for applying ASR in slabs
+      logical :: Write_eigenstates_at_HSP ! Flag for writing the eigenstates at HSP
+      logical :: Boltz_OHE_calc  ! Flag for Boltzmann tranport under magnetic field
+@@ -606,13 +614,68 @@
+      !> iprint_level=3 : print all the debug messages
+      integer :: iprint_level = 1       
+ 
++     !> Direction (in fractional/reduced coordinates) used to take the
++     !> direction-dependent non-analytic LO-TO limit exactly at q=Gamma.
++     !> Only used at q=0; at any finite q the Ewald sum already carries the
++     !> full direction dependence. Default (1,1,1) reproduces the old
++     !> hard-coded behaviour.
++     real(dp) :: LOTO_qdir(3) = (/1.0d0, 1.0d0, 1.0d0/)
++
++     !> Fractional offset applied to an exact Gamma point lying on a band path,
++     !> along that path segment, so that the direction-dependent LO-TO limit is
++     !> taken along the segment. 0 disables the nudge (then LOTO_qdir is used).
++     real(dp) :: LOTO_gamma_offset = 0.0d0
++
++     !> Ewald splitting parameter for the long-range dipole-dipole sum, used as
++     !> exp(-geg/(4*LOTO_alph)) with geg in (2pi/alat)^2 units.
++     !> The value MUST match the splitting used by whatever code subtracted the
++     !> long-range part when the short-range hr.dat was made, otherwise the
++     !> removed and re-added terms do not cancel.
++     !> Default 1.0 reproduces the previous hardcoded behaviour (matches
++     !> CellConstructor / older QE, i.e. the QE2TBDAT workflow).
++     !> A negative value selects QE's cell-dependent choice alph = (alat/2pi)^2
++     !> (QE gitlab issue #601), used by modern QE q2r.x.
++     real(dp) :: LOTO_alph = 1.0d0
++
++     !> Cutoff on geg/(4*LOTO_alph) for the reciprocal-space Ewald sum.
++     real(dp) :: LOTO_gmax = 14.0d0
++
++     !> Which long-range dipole-dipole implementation to use.
++     !> 'qe'      : the QE rgd_blk lineage (default, matches QE2TBDAT hr.dat)
++     !> 'phonopy' : phonopy's Gonze-Lee partition, ported from phonopy/c/dynmat.c
++     !>             Use this when hr.dat came from phonopy force constants.
++     character(20) :: LOTO_method = 'qe'
++
++     !> Use the 2D (Sohier et al.) form of the long-range dipole term for slab
++     !> and ribbon calculations. The 3D Ewald sum implicitly includes periodic
++     !> images along the surface normal, which a slab does not have.
++     !> NOTE: the 2D form assumes a monolayer separated by vacuum; a thick slab
++     !> built by truncating a bulk hr.dat is not that limit, so treat results
++     !> with care and compare against LOTO_2D = F.
++     logical :: LOTO_2D = .false.
++
++     !> Direction actually used for the non-analytic LO-TO limit at q=0 in the
++     !> current calculation. Following phonopy (phonon/band_structure.py), a
++     !> band-path segment that starts or ends at Gamma supplies its own
++     !> direction, so the value at Gamma is well defined and independent of
++     !> k-point ordering or MPI rank layout. Cartesian, need not be normalised.
++     !> Falls back to LOTO_qdir when not set by the caller.
++     real(dp) :: LOTO_qdir_run(3) = 0d0
++     logical  :: LOTO_qdir_run_set = .false.
++
++     !> Per-k-point Gamma direction for the bulk / slab band paths, in reduced
++     !> coordinates. Filled by readinput alongside k3points / k2_path.
++     real(dp), allocatable :: k3points_qdir(:,:)
++     real(dp), allocatable :: k2points_qdir(:,:)
++
+      !> namelist parameters
+      namelist /PARAMETERS/ Eta_Arc,EF_broadening, OmegaNum, OmegaNum_unfold, OmegaMin, OmegaMax, &
+         E_arc, Nk1, Nk2, Nk3, NP, Gap_threshold, Tmin, Tmax, NumT, &
+         NBTau, BTauNum, BTauMax, Rcut, Magp, Magq, Magp_min, Magp_max, Nslice_BTau_Max, &
+         wcc_neighbour_tol, wcc_calc_tol, Beta,NumLCZVecs, iprint_level, &
+         Relaxation_Time_Tau,  symprec, arpack_solver, RKF45_PERIODIC_LEVEL, &
+-        NumRandomConfs, NumSelectedEigenVals, projection_weight_mode, topsurface_atom_index
++        NumRandomConfs, NumSelectedEigenVals, projection_weight_mode, topsurface_atom_index, &
++        LOTO_qdir, LOTO_gamma_offset, LOTO_alph, LOTO_gmax, LOTO_method, LOTO_2D
+     
+      real(Dp) :: E_fermi  ! Fermi energy, search E-fermi in OUTCAR for VASP, set to zero for Wien2k
+ 
+diff --git a/src/readinput.f90 b/src/readinput.f90
+index 1d1a416..3703476 100644
+--- a/src/readinput.f90
++++ b/src/readinput.f90
+@@ -2161,6 +2161,8 @@ subroutine readinput
+    allocate(k3len_mag(nk3_band))
+    allocate(k3len_unfold(nk3_band))
+    allocate(k3points(3, nk3_band))
++   allocate( k3points_qdir(3, nk3_band))
++   k3points_qdir= 0d0
+    k3len=0d0
+    k3len_mag=0d0
+    k3len_unfold=0d0
+@@ -2177,6 +2179,29 @@ subroutine readinput
+ 
+          k3points(:, i+ (j-1)*NN)= kstart+ (kend- kstart)*dble(i-1)/dble(NN-1)
+ 
++         !> Direction used for the non-analytic LO-TO limit if this point is
++         !> Gamma. Following phonopy, a segment touching Gamma supplies its own
++         !> direction, which makes the value at Gamma well defined per segment
++         !> and reproduces the physical LO-TO discontinuity there.
++         if (i == NN) then
++            k3points_qdir(:, i+(j-1)*NN)= kstart- kend
++         else
++            k3points_qdir(:, i+(j-1)*NN)= kend- kstart
++         endif
++
++         !> Optional legacy behaviour: displace an exact Gamma along its segment
++         !> instead of supplying a direction. Off by default.
++         if (LOTO_correction .and. LOTO_gamma_offset > 0d0 .and. NN > 1) then
++            if (dsqrt(k3points(1,i+(j-1)*NN)**2 + k3points(2,i+(j-1)*NN)**2 &
++                     +k3points(3,i+(j-1)*NN)**2) < eps6) then
++               if (i == NN) then
++                  k3points(:, i+(j-1)*NN)= kend + (kstart- kend)*LOTO_gamma_offset
++               else
++                  k3points(:, i+(j-1)*NN)= kstart+ (kend- kstart)*LOTO_gamma_offset
++               endif
++            endif
++         endif
++
+          temp= dsqrt((k2(1)- k1(1))**2 &
+             +(k2(2)- k1(2))**2  &
+             +(k2(3)- k1(3))**2)/dble(NN-1)
+@@ -2289,6 +2314,8 @@ subroutine readinput
+    NN= Nk
+    knv2= NN*nk2lines
+    allocate( k2_path(knv2, 2))
++   allocate( k2points_qdir(knv2, 2))
++   k2points_qdir= 0d0
+    allocate( k2len (knv2))
+    k2_path= 0d0
+    k2len= 0d0
+@@ -2304,6 +2331,13 @@ subroutine readinput
+          k2(1:2)= kend(1)*Ka2+ kend(2)*Kb2
+          k2_path(i+(j-1)*NN,:)= kstart(1:2)+ (kend(1:2)-kstart(1:2))*(i-1)/dble(NN-1)
+ 
++         !> Same phonopy rule as for the bulk path, in the surface BZ
++         if (i == NN) then
++            k2points_qdir(i+(j-1)*NN,:)= kstart(1:2)- kend(1:2)
++         else
++            k2points_qdir(i+(j-1)*NN,:)= kend(1:2)- kstart(1:2)
++         endif
++
+          temp= dsqrt((k2(1)- k1(1))**2 &
+             +(k2(2)- k1(2))**2)/dble(NN-1)
+ 
+diff --git a/src/surfstat.f90 b/src/surfstat.f90
+index b2fad48..4fd94aa 100644
+--- a/src/surfstat.f90
++++ b/src/surfstat.f90
+@@ -122,24 +122,9 @@
+      do i=1,Ndim
+         ones(i,i)=1.0d0
+      enddo
+-     if((LOTO_correction).and.(.not.added_LR_in_Real_Space))then
+-         do iR=1,Nrpts
+-            ia=irvec(1,iR)
+-            ib=irvec(2,iR)
+-            ic=irvec(3,iR)
+-            R = ia*Origin_cell%Rua + ib*Origin_cell%Rub + ic*Origin_cell%Ruc
+-            R = R/Origin_cell%cell_parameters(1)
+-            R = irvec(:,iR)
+-            mat1 = 0.0d0
+-            call FT_long_range_to_R(R,LOTO_grid1,LOTO_grid2,LOTO_grid3,mat1,     &
+-                                    Origin_cell%Atom_position_cart/Origin_cell%cell_parameters(1),  &
+-                                    Born_Charge(:,:,:), Origin_cell%reciprocal_lattice*Origin_cell%cell_parameters(1)/(twopi), &
+-                                    Origin_cell%Num_atoms, Origin_cell%spinorbital_to_atom_index(::3))
+-            HmnR(:,:,iR) = HmnR(:,:,iR)+mat1!/Nrpts
+-            added_LR_in_Real_Space = .true.
+-         end do   
+-         
+-      end if
++     !> Long-range term is built once into HmnR_LR (no mutation of HmnR)
++     call ensure_LR_realspace()
++
+ 
+      time_start= 0d0
+      time_end= 0d0
