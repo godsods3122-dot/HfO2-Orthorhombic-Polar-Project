@@ -187,7 +187,7 @@ def main():
             weyl.append((g, x))
     print("  거울면으로 수렴/거울면 위 : %d개  (chirality 0 강제)" % trivial)
     print("  일반 위치에 남은 것       : %d개" % len(weyl))
-    for g, x in sorted(weyl)[:20]:
+    for g, x in sorted(weyl, key=lambda t: t[0])[:20]:
         print("   k=(%.7f,%.7f,%.7f)  gap=%.3e" % (x[0], x[1], x[2], g))
     if weyl:
         np.savetxt('weyl_candidates.dat', np.array([list(x) + [g] for g, x in weyl]),
