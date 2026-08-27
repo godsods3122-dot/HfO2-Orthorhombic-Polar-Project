@@ -1,0 +1,70 @@
+# Ignore executable binary file
+*.x
+
+# Ignore also the DS_store file
+.DS_store
+
+# Ignore examples folder except the important files
+examples/* 
+
+!examples/AgP2
+
+examples/AgP2/* 
+!examples/AgP2/pn.in
+!examples/AgP2/AgP2_phononTB_hr.dat
+
+
+!examples/Al2ZnTe4
+
+examples/Al2ZnTe4/* 
+!examples/Al2ZnTe4/pn.in
+!examples/Al2ZnTe4/Al2Te4Zn1_phononTB_hr.dat
+
+
+!examples/BHL
+
+examples/BHL/*
+!examples/BHL/pn.in
+!examples/BHL/BHL_phononTB_hr.dat
+
+utility_scripts/*
+!utility_scripts/QE2TBDAT
+!utility_scripts/createSimphonyInput
+
+
+# Ignore most of the scripts in the utility folder
+*.py
+
+###### Default ignores for Fortran repositories ######
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
