@@ -1,9 +1,4 @@
---------------------------------------------------------------------------
-mpirun was unable to launch the specified application as it could not access
-or execute an executable:
-
-Executable: /home/user/simphony_build/simphony/bin/pn.x
-Node: vm
-
-while attempting to start process rank 0.
---------------------------------------------------------------------------
+ >>> Gonze (phonopy-compatible) LO-TO term enabled
+     G_cutoff (1/Ang) :     0.814122
+     number of G      :          293
+     Lambda           :     0.190958
