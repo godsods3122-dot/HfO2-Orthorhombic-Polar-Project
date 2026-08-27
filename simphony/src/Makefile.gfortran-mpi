@@ -1,0 +1,44 @@
+OBJ = module.o sparse.o pn_aux.o math_lib.o mgmres.o  \
+		  readHmnR.o inverse.o proteus.o \
+       eigen.o ham_qlayer2qlayer.o psi.o rand.o \
+  		 ham_slab.o ham_bulk.o gonze_nac.o ek_slab.o ek_bulk_polar.o ek_bulk.o \
+       readinput.o fermisurface.o surfgreen.o surfstat.o \
+  		 mat_mul.o ham_ribbon.o ek_ribbon.o \
+       fermiarc.o berrycurvature.o \
+  		 wanniercenter.o dos.o  orbital_momenta.o \
+		 berry.o wanniercenter_adaptive.o \
+  		 effective_mass.o findnodes.o \
+	main.o
+
+# compiler, here mpif90 should be comipled with gfortran
+F90  = mpif90 -cpp -DMPI -ffree-line-length-512 -fallow-argument-mismatch                         
+
+INCLUDE =
+WFLAG = #-Wall -Wextra -Warray-temporaries -Wconversion -fimplicit-none \
+       -fbacktrace -ffree-line-length-0 -fcheck=all -finit-real=nan \
+       -ffpe-trap=zero,overflow,underflow
+
+OFLAG = -g
+FFLAG = $(OFLAG) $(WFLAG)
+LFLAG = $(OFLAG)
+
+
+# blas and lapack libraries
+LIBS = -llapack -lblas
+
+# Intel MKL also supports with gfortran comipler
+# dynamic linking
+# LIBS = -L/${MKLROOT}/lib/intel64 -lmkl_core -lmkl_sequential -lmkl_intel_lp64 -lpthread
+ 
+
+main : $(OBJ)
+	$(F90) $(LFLAG) $(OBJ) -o pn.x $(LIBS)
+	cp -f pn.x ../bin
+
+.SUFFIXES: .o .f90
+
+.f90.o :
+	$(F90) $(FFLAG) $(INCLUDE) -c $*.f90
+
+clean :
+	rm -f *.o *.mod *~ pn.x
