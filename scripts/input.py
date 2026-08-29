@@ -81,9 +81,9 @@ def main():
              "'P','F','I','A','C','R' / '3 또는 9개 숫자'"
     )
     parser.add_argument(
-        "--transpose-born", dest="transpose_born", action="store_true", default=True,
+        "--transpose-born", dest="transpose_born", action="store_true", default=False,
         help="LOTO_BC에 쓰기 전에 각 원자의 Born charge 3x3 텐서를 전치한다 "
-             "(기본값: 켜짐). Simphony 공식 Al2ZnTe4 예제의 LOTO_BC를 phonopy "
+             "(기본값: 꺼짐). 2026-08-29 측정으로 비전치가 옳음이 확정됐다 - parent_m1 데이터셋에서 비전치는 전 36밴드에서 phonopy와 2.6e-7 THz 일치, 전치는 1.8e-1 THz 어긋나고 Weyl 자리에서 gap이 닫히지도 않는다. 아래 옛 근거는 기록용이다: Simphony 공식 Al2ZnTe4 예제의 LOTO_BC를 phonopy "
              "원본 Born charge와 원자별로 대조한 결과, Simphony는 전치된 "
              "텐서를 기대하는 것으로 확인됨."
     )
@@ -182,6 +182,7 @@ def main():
 
         f.write("&TB_FILE\n"
                 f"  Hrfile = '{args.hr}'\n"
+                f"  Package = 'Phonopy'\n"
                 "/\n\n")
 
         f.write("&CONTROL\n"
