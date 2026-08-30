@@ -76,7 +76,12 @@ def patch_pnin(path, origin, vecs, NN, thresh):
         if 'Nk1 = ' in x: out.append('  Nk1 = %d' % NN[0]); i += 1; continue
         if 'Nk2 = ' in x: out.append('  Nk2 = %d' % NN[1]); i += 1; continue
         if 'Nk3 = ' in x: out.append('  Nk3 = %d' % NN[2]); i += 1; continue
-        if 'Gap_threshold' in x: out.append('  Gap_threshold = %g' % thresh); i += 1; continue
+        if 'LOTO_method' in x: i += 1; continue          # 아래에서 강제로 다시 넣는다
+        if 'Gap_threshold' in x:
+            # phonopy 유래 hr.dat 이면 반드시 'phonopy'. 빠지면 기본값 'qe' 로 돌아가
+            # Ewald 분할이 달라져 밴드가 0.03 THz 규모로 어긋난다 (실측).
+            out.append("  LOTO_method = 'phonopy'")
+            out.append('  Gap_threshold = %g' % thresh); i += 1; continue
         out.append(x); i += 1
     open(path, 'w').write('\n'.join(out) + '\n')
 
