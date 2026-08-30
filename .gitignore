@@ -7,3 +7,6 @@ work/
 *.mod
 pn.x
 PN.out
+
+# weyl_scan.py 가 cwd 에 남기는 산물 (결과는 results/ 아래에 보관)
+/weyl_candidates.dat
