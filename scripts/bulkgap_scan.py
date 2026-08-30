@@ -54,7 +54,7 @@ def sym_indices(src, symprec=1e-4):
     return ds.international, sorted(mir), polar
 
 
-def patch_pnin(path, origin, span, N, thresh):
+def patch_pnin(path, origin, span, NN, thresh):
     L = open(path).read().splitlines()
     out, i = [], 0
     o, s = origin, span
@@ -76,9 +76,9 @@ def patch_pnin(path, origin, span, N, thresh):
             out.append('  ' + t.split('=')[0].strip() + ' = F'); i += 1; continue
         if t.startswith('NumOccupied'):
             out.append('  NumOccupied = 17'); i += 1; continue
-        if 'Nk1 = ' in x: out.append('  Nk1 = %d' % N); i += 1; continue
-        if 'Nk2 = ' in x: out.append('  Nk2 = %d' % N); i += 1; continue
-        if 'Nk3 = ' in x: out.append('  Nk3 = %d' % N); i += 1; continue
+        if 'Nk1 = ' in x: out.append('  Nk1 = %d' % NN[0]); i += 1; continue
+        if 'Nk2 = ' in x: out.append('  Nk2 = %d' % NN[1]); i += 1; continue
+        if 'Nk3 = ' in x: out.append('  Nk3 = %d' % NN[2]); i += 1; continue
         if 'Gap_threshold' in x: out.append('  Gap_threshold = %g' % thresh); i += 1; continue
         out.append(x); i += 1
     open(path, 'w').write('\n'.join(out) + '\n')
@@ -92,6 +92,9 @@ def main():
     ap.add_argument('--origin', type=float, nargs=3, default=[0.0, 0.0, 0.0])
     ap.add_argument('--span', type=float, nargs=3, default=[0.5, 0.5, 0.5])
     ap.add_argument('-N', type=int, default=81)
+    ap.add_argument('-N1', type=int, default=None, help='축별 격자수 (미지정시 -N)')
+    ap.add_argument('-N2', type=int, default=None)
+    ap.add_argument('-N3', type=int, default=None)
     ap.add_argument('--thresh', type=float, default=0.05, help='Gap_threshold (파일 단위)')
     ap.add_argument('--tol', type=float, default=None,
                     help='대칭면 판정 여유 (환산). 기본: 격자간격의 1.5배 '
@@ -104,12 +107,13 @@ def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     pn = a.pn or os.path.join(root, 'simphony', 'src', 'pn.x')
 
+    NN = [a.N1 or a.N, a.N2 or a.N, a.N3 or a.N]
     name, mir, polar = sym_indices(a.src)
     print('%s  거울지표=%s  편극축=%s' % (name, [i + 1 for i in mir], [i + 1 for i in polar]))
 
     gc = os.path.join(a.dir, 'GapCube.dat')
     if not a.no_run:
-        patch_pnin(os.path.join(a.dir, 'pn.in'), a.origin, a.span, a.N, a.thresh)
+        patch_pnin(os.path.join(a.dir, 'pn.in'), a.origin, a.span, NN, a.thresh)
         if os.path.exists(gc):
             os.remove(gc)
         subprocess.run([pn], cwd=a.dir, stdout=open(os.path.join(a.dir, 'run.log'), 'w'),
@@ -126,7 +130,8 @@ def main():
     wbar = np.sqrt(np.maximum(d[:, 4], 0) / HARTREE)          # THz
     dw = d[:, 3] / (2 * HARTREE * np.maximum(wbar, 1e-12))    # THz
 
-    tol = a.tol if a.tol is not None else 1.5 * max(a.span) / (a.N - 1.0)
+    step = max((a.span[i] / (NN[i] - 1.0)) for i in range(3) if NN[i] > 1)
+    tol = a.tol if a.tol is not None else 1.5 * step
 
     def enforced(k):
         for i in mir:
@@ -138,8 +143,8 @@ def main():
         return False
 
     keep = np.array([not enforced(k) for k in K])
-    print('격자 %d^3 (간격 %.5f), 대칭면 여유 %.5f, 기록 %d개 -> 자유 %d개'
-          % (a.N, max(a.span) / (a.N - 1.0), tol, len(d), keep.sum()))
+    print('격자 %dx%dx%d (최대간격 %.5f), 대칭면 여유 %.5f, 기록 %d개 -> 자유 %d개'
+          % (NN[0], NN[1], NN[2], step, tol, len(d), keep.sum()))
     if keep.sum() == 0:
         print('  -> 후보 없음')
         return
