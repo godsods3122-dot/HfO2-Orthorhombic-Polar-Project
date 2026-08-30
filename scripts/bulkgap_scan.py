@@ -54,19 +54,16 @@ def sym_indices(src, symprec=1e-4):
     return ds.international, sorted(mir), polar
 
 
-def patch_pnin(path, origin, span, NN, thresh):
+def patch_pnin(path, origin, vecs, NN, thresh):
     L = open(path).read().splitlines()
     out, i = [], 0
-    o, s = origin, span
+    o, V = origin, vecs
     while i < len(L):
         x = L[i]
         t = x.strip()
         if t == 'KCUBE_BULK':
-            out += ['KCUBE_BULK',
-                    ' %.8f %.8f %.8f' % tuple(o),
-                    ' %.8f 0.0 0.0' % s[0],
-                    ' 0.0 %.8f 0.0' % s[1],
-                    ' 0.0 0.0 %.8f' % s[2]]
+            out += ['KCUBE_BULK', ' %.8f %.8f %.8f' % tuple(o)] + \
+                   [' %.8f %.8f %.8f' % tuple(v) for v in V]
             i += 5
             continue
         if t.startswith('BulkGap_cube_calc'):
@@ -91,6 +88,12 @@ def main():
     ap.add_argument('--pn', default=None, help='pn.x 경로 (기본: <repo>/simphony/src/pn.x)')
     ap.add_argument('--origin', type=float, nargs=3, default=[0.0, 0.0, 0.0])
     ap.add_argument('--span', type=float, nargs=3, default=[0.5, 0.5, 0.5])
+    ap.add_argument('--v1', type=float, nargs=3, default=None,
+                    help='KCUBE 변 벡터를 직접 지정 (--span 대신). 평면을 훑을 때는 '
+                         '얇은 벡터를 반드시 v3 에 둘 것 - v2 에 두면 Simphony 가 '
+                         '엉뚱한 격자를 만든다 (검증됨).')
+    ap.add_argument('--v2', type=float, nargs=3, default=None)
+    ap.add_argument('--v3', type=float, nargs=3, default=None)
     ap.add_argument('-N', type=int, default=81)
     ap.add_argument('-N1', type=int, default=None, help='축별 격자수 (미지정시 -N)')
     ap.add_argument('-N2', type=int, default=None)
@@ -108,12 +111,16 @@ def main():
     pn = a.pn or os.path.join(root, 'simphony', 'src', 'pn.x')
 
     NN = [a.N1 or a.N, a.N2 or a.N, a.N3 or a.N]
+    VEC = [a.v1, a.v2, a.v3]
+    if any(v is None for v in VEC):
+        VEC = [[a.span[0], 0, 0], [0, a.span[1], 0], [0, 0, a.span[2]]]
+    VEC = [np.array(v, float) for v in VEC]
     name, mir, polar = sym_indices(a.src)
     print('%s  거울지표=%s  편극축=%s' % (name, [i + 1 for i in mir], [i + 1 for i in polar]))
 
     gc = os.path.join(a.dir, 'GapCube.dat')
     if not a.no_run:
-        patch_pnin(os.path.join(a.dir, 'pn.in'), a.origin, a.span, NN, a.thresh)
+        patch_pnin(os.path.join(a.dir, 'pn.in'), a.origin, VEC, NN, a.thresh)
         if os.path.exists(gc):
             os.remove(gc)
         subprocess.run([pn], cwd=a.dir, stdout=open(os.path.join(a.dir, 'run.log'), 'w'),
@@ -130,7 +137,7 @@ def main():
     wbar = np.sqrt(np.maximum(d[:, 4], 0) / HARTREE)          # THz
     dw = d[:, 3] / (2 * HARTREE * np.maximum(wbar, 1e-12))    # THz
 
-    step = max((a.span[i] / (NN[i] - 1.0)) for i in range(3) if NN[i] > 1)
+    step = max((np.linalg.norm(VEC[i]) / (NN[i] - 1.0)) for i in range(3) if NN[i] > 1)
     tol = a.tol if a.tol is not None else 1.5 * step
 
     def enforced(k):
