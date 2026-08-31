@@ -25,12 +25,18 @@ EARC = 10.0869
 def load(name):
     d = np.loadtxt(os.path.join(D, name))
     kx, ky, v = d[:, 0], d[:, 1], d[:, 2]
-    # ky 가 안쪽 루프 → nky 는 ky 가 처음으로 되돌아오기 직전까지의 길이
-    nky = int(np.argmax(ky[1:] < ky[:-1]) + 1)
-    nkx = len(ky) // nky
-    V = v.reshape(nkx, nky)
-    a = np.linspace(KA[0], KA[1], nkx)
-    b = np.linspace(KB[0], KB[1], nky)
+    # 어느 쪽이 안쪽 루프인지 데이터에서 직접 판정한다
+    if abs(ky[1] - ky[0]) > abs(kx[1] - kx[0]):        # ky 가 안쪽
+        n_in = int(np.argmax(np.diff(ky) < 0) + 1)
+        n_out = len(v) // n_in
+        V = v.reshape(n_out, n_in)                      # [kx, ky]
+    else:                                               # kx 가 안쪽
+        n_in = int(np.argmax(np.diff(kx) < 0) + 1)
+        n_out = len(v) // n_in
+        V = v.reshape(n_out, n_in).T                    # -> [kx, ky]
+        n_in, n_out = n_out, n_in
+    a = np.linspace(KA[0], KA[1], V.shape[0])
+    b = np.linspace(KB[0], KB[1], V.shape[1])
     return a, b, V
 
 
