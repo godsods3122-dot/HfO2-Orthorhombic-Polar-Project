@@ -8,8 +8,8 @@ POSCAR 자체는 절대 치환하지 않는다 — FORCE_SETS 와 어긋난다.
 |---|---|---|
 | `fig1_dispersion_parent_pristine.png` | parent_pristine 포논 분산, Γ-X-S-Y-Γ-Z-U-R-T-Z | `run_band.py` → `fig1_2_bands.py` |
 | `fig2_bands17_18_node.png` | 밴드 17/18 강조 + 노드 주변 절단 2장 | `fig2_node.py` |
-| `fig3_fermi_arc.png` | ω = 10.0869 THz 등주파수 표면 스펙트럼 (bottom / top / bulk + 아크 분리) | `run_slab.py --mode arc` → `fig3_arc.py` |
-| `fig4_slab_arc.png` | 아크를 관통하는 직선 `k_b`=0 위의 표면 스펙트럼 | `run_slab.py --mode ss` → `fig4_slabss.py` |
+| `fig3_surface_spectrum.png` | ω = 10.0869 THz 표면 스펙트럼 `dos_l − dos_r` (단일 패널, 보조선 없음) | `run_slab.py --mode arc` → `fig3_arc.py` |
+| `fig4_slab_arc.png` | `k_b`=0 위의 표면 스펙트럼 (보조) | `run_slab.py --mode ss` → `fig4_slabss.py` |
 | `fig5_weyl_cone.png` | 바일 콘 3D + 주축 절단 (type-II 증거) | `fig5_cone.py` |
 | `fig6_wcc_4weyl.png` | 4개 노드 각각의 구면 Wilson loop (WCC 합) | Simphony `WeylChirality_calc` → `fig6_wcc.py` |
 | `fig7_strain_overlay.png` | biaxial strain 0 / −0.8 / −1.0 / −2.5 / −3.0 % 밴드 중첩 | `run_band.py` ×5 → `fig7_overlay.py` |
@@ -62,15 +62,16 @@ NumOccupied = 17,  SELECTED_OCCUPIED_BANDS 1-17
 - **표면 전용** `ρ_surf − ρ_bulk·N_top/N_dim` — fig 4 (c)
 - **위/아래 표면 차** `dos_l − dos_r` — 벌크가 정확히 상쇄된다. fig 3 (d)
 
-### 아크임을 확정한 증거
+### ⚠️ 식별 가능한 아크는 없다 (이전 주장 철회)
 
-fig 3 에 겹쳐 그린 두 곡선은 phonopy 로 따로 구한 **band 17 / band 18 의
-사영 연속체 경계**다.  두 경계가 **정확히 네 바일 사영점에서 교차**하고,
-`dos_l − dos_r` 의 능선이 `(0.14649, +0.07085)` 에서 출발해 `k_b=0` 에서
-`k_a ≈ 0.110` 까지 휘었다가 `(0.14649, −0.07085)` 에서 **끝난다.**
+`dos_l − dos_r` 의 밝은 능선(`k_a ≈ ±0.10`)을 한때 아크로 봤으나 아니다.
+능선이 노드의 `k_b = ±0.07085` 를 그냥 통과해 `|k_b| ≈ 0.11` 까지 이어지고,
+그 위치는 band 17 과 18 이 **둘 다** 사영된 영역이다.  아크는 사영점에서
+끝나는 열린 곡선이어야 하고 한 밴드만 사영된 영역에 있어야 한다.
+실제 아크 영역의 표면 무게는 배경과 구분되지 않는다 (중앙값 0.444 vs 0.459).
 
-fig 4 는 그 아크를 반드시 관통하는 직선(`k_b = 0`) 위의 스펙트럼이고,
-아크 가지가 `k_a = 0.110` 에서 ω_Weyl 을 가로지른다.
+원인은 위와 같다: 노드 주파수에 벌크 간극이 없어 아크가 있더라도 공명이고
+현재 분해능으로 분리되지 않는다.  자세한 근거는 SUMMARY 17.5.
 
 ## ⚠️ 미해결 — 슬랩 LO-TO 가 표면 거울 대칭을 깬다
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Fig 4: 페르미 아크를 가로지르는 경로 위의 표면 상태 스펙트럼.
+"""Fig 4: k_b = 0 직선 위의 표면 상태 스펙트럼 (보조 그림).
 
-경로는 `k_b = 0` 고정, `k_a : 0 → 0.30`.  fig 3 (d) 에서 아크는 chirality 가
-반대인 두 사영점 `(0.14649, ±0.07085)` 을 잇고 `k_b = 0` 에서 `k_a ≈ 0.110`
-까지 안쪽으로 휘어 있다.  그래서 이 직선은 **아크를 반드시 한 번 관통한다.**
+경로는 `k_b = 0` 고정, `k_a : 0 → 0.30`.
 
-노드 주파수에는 벌크 간극이 없으므로(사영 연속체가 표면 BZ 전체를 덮는다)
-raw DOS 로는 벌크에 묻힌다.  (c) 의 표면 전용 값에서 아크 가지가 ω_Weyl 을
-가로지르는 게 선명하게 보인다.
+⚠️ 이 그림의 표면 가지를 한때 페르미 아크로 봤으나 **아니다.**  능선을 2D
+지도에서 추적하니 노드의 `k_b = ±0.07085` 를 그냥 통과해 `|k_b| ≈ 0.11`
+까지 이어지고, 그 능선이 있는 `k_a ≈ 0.10` 은 band 17 과 18 이 둘 다 사영된
+영역이다.  아크는 사영점에서 끝나는 열린 곡선이어야 하고 한 밴드만 사영된
+영역에 있어야 한다.  자세한 내용은 `results/parent_pristine/SUMMARY.md` 17.5.
 
 표면 전용 = ρ_surf − ρ_bulk·N_top/N_dim.  Simphony 의 `dos_l_only` 열은 이
 궤도 개수 보정이 없어 전부 eps9 로 잘려 나온다
@@ -24,7 +24,7 @@ import matplotlib.patheffects as pe
 D = sys.argv[1] if len(sys.argv) > 1 else 'work/cut_zero'
 KA0, KA1 = 0.0, 0.30
 W0 = 10.086936
-KARC = 0.110              # 아크가 이 선을 지나는 k_a (데이터에서 읽은 값)
+KBRANCH = 0.110           # 표면 가지가 이 선에서 omega_Weyl 을 지나는 k_a
 STK = [pe.withStroke(linewidth=3.2, foreground='black')]
 
 
@@ -49,7 +49,7 @@ ONLY = np.log10(np.maximum(np.exp(L) - np.exp(BK) * RATIO, 0.0) + 1e-3)
 
 panels = [(L, '(a)  bottom surface', 'log DOS'),
           (R, '(b)  top surface', 'log DOS'),
-          (ONLY, '(c)  bottom surface only  —  the Fermi arc branch',
+          (ONLY, '(c)  bottom surface only  —  surface branch',
            '$\\log_{10}$ surface DOS')]
 fig, axs = plt.subplots(1, 3, figsize=(18.0, 6.0), sharey=True,
                         gridspec_kw=dict(wspace=0.16))
@@ -58,8 +58,8 @@ for ax, (V, tt, cl) in zip(axs, panels):
     im = ax.pcolormesh(ka, om, V.T, cmap='jet', vmin=lo, vmax=hi,
                        shading='gouraud', rasterized=True)
     ax.axhline(W0, color='white', lw=1.7, ls='--', alpha=0.9, path_effects=STK)
-    ax.plot(KARC, W0, 'o', ms=14, mfc='none', mec='white', mew=3.2, zorder=7)
-    ax.plot(KARC, W0, 'o', ms=14, mfc='none', mec='k', mew=1.3, zorder=8)
+    ax.plot(KBRANCH, W0, 'o', ms=14, mfc='none', mec='white', mew=3.2, zorder=7)
+    ax.plot(KBRANCH, W0, 'o', ms=14, mfc='none', mec='k', mew=1.3, zorder=8)
     ax.set_xlim(KA0, KA1)
     ax.set_xlabel('$k_a$  (reduced)   at  $k_b$ = 0')
     ax.set_title(tt, fontsize=14.5, pad=8)
@@ -68,16 +68,16 @@ for ax, (V, tt, cl) in zip(axs, panels):
 axs[0].set_ylabel('Frequency (THz)')
 axs[0].text(0.025, 0.975, '$\\omega_{\\rm Weyl}$ = %.4f THz' % W0, color='white',
             transform=axs[0].transAxes, va='top', fontsize=12.5, path_effects=STK)
-axs[2].annotate('arc crosses $\\omega_{\\rm Weyl}$\nat $k_a$ = %.3f' % KARC,
-                xy=(KARC, W0), xytext=(0.215, 10.19), ha='center',
+axs[2].annotate('surface branch crosses\n$\\omega_{\\rm Weyl}$ at $k_a$ = %.3f' % KBRANCH,
+                xy=(KBRANCH, W0), xytext=(0.215, 10.19), ha='center',
                 color='white', fontsize=13, fontweight='bold', zorder=9,
                 path_effects=STK,
                 arrowprops=dict(arrowstyle='-|>', color='white', lw=2.1,
                                 shrinkB=9, path_effects=STK))
-fig.suptitle('Surface spectrum on a line that must cross the Fermi arc  '
-             '($k_b$ = 0,  surface $\\perp$ $c$,  LO-TO on,  $N_p$ = 2,  $\\eta$ = 0.004 THz)\n'
-             'the arc connects $(0.14649, +0.07085)$ and $(0.14649, -0.07085)$ '
-             'and bows inward to $k_a \\approx 0.110$ at $k_b$ = 0',
+fig.suptitle('Surface spectrum along $k_b$ = 0  '
+             '(surface $\\perp$ $c$,  LO-TO on,  $N_p$ = 2,  $\\eta$ = 0.004 THz)\n'
+             'the branch crossing $\\omega_{\\rm Weyl}$ is a surface resonance inside the bulk '
+             'continuum, not a Fermi arc',
              y=1.035, fontsize=15)
 fig.savefig('figs/fig4_slab_arc.png')
 print('fig4 저장.  N_top/N_dim = %.3f' % RATIO)
