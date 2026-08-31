@@ -8,10 +8,14 @@ import argparse, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def patch(path, mode, nk1, nk2, omin, omax, onum, earc, eta, npl, kpath=None, kplane=None):
+def patch(path, mode, nk1, nk2, omin, omax, onum, earc, eta, npl, kpath=None, kplane=None,
+          surface=None):
     L = open(path).read().splitlines(); out = []; i = 0
     while i < len(L):
         x = L[i]; t = x.strip()
+        if t == 'SURFACE' and surface:
+            out += ['SURFACE'] + list(surface)
+            i += 3; continue
         if t == 'KPLANE_SLAB' and kplane:
             out += ['KPLANE_SLAB'] + list(kplane)
             i += 4; continue
@@ -54,9 +58,11 @@ def main():
     ap.add_argument('--kpath', nargs='*', default=None)
     ap.add_argument('--kplane', nargs='*', default=None)
     ap.add_argument('--exe', default=None, help='pn.x 경로 (기본: simphony/src/pn.x)')
+    ap.add_argument('--surface', nargs='*', default=None,
+                    help='SURFACE 카드 두 줄 (면내 벡터).  구조마다 편극축이 달라 필요')
     a = ap.parse_args()
     patch(os.path.join(a.dir, 'pn.in'), a.mode, a.nk1, a.nk2, a.omin, a.omax,
-          a.onum, a.earc, a.eta, a.npl, a.kpath, a.kplane)
+          a.onum, a.earc, a.eta, a.npl, a.kpath, a.kplane, a.surface)
     exe = a.exe or os.path.join(ROOT, 'simphony', 'src', 'pn.x')
     subprocess.run([exe], cwd=a.dir,
                    stdout=open(os.path.join(a.dir, 'run.log'), 'w'),
