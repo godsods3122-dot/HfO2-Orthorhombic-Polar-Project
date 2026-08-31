@@ -82,6 +82,20 @@ def stitch(name):
 a, b, L = stitch('arc.dat_l')
 _, _, R = stitch('arc.dat_r')
 _, _, BK = stitch('arc.dat_bulk')
+
+# 표면 브릴루앙 영역의 거울 대칭을 명시적으로 회복시킨다.
+# 이 표면(법선 ∥ c)은 z 이동이 없는 a-glide(⊥b)를 그대로 가지므로
+# dos(k_a, k_b) = dos(k_a, -k_b) 여야 한다.  시간역전에서 오는 반전 대칭
+# (k_a,k_b)->(-k_a,-k_b) 는 계산값이 이미 정확히(0.000e+00) 만족한다.
+# 그런데 거울은 log DOS 기준 중앙값 0.024, 최대 0.66 (전체 범위 7.8) 만큼
+# 어긋난다.  벌크 phonopy 는 같은 거울을 1e-7 THz 로 지키므로 입력이 아니라
+# ham_qlayer2qlayer_LOTO (슬랩 per-k LO-TO 항) 쪽 문제다.  SlabSS 도 같은
+# 크기로 어긋나므로 이번 패치가 만든 것이 아니라 원래 있던 것이다.
+# 아직 원인을 못 짚었으므로 여기서는 알려진 대칭으로 평균만 낸다.
+SYM = True
+if SYM:
+    L, R, BK = (0.5 * (V + V[:, ::-1]) for V in (L, R, BK))
+
 ratio = orbital_ratio(DIRS[0])
 only_l = np.maximum(np.exp(L) - np.exp(BK) * ratio, 0.0)
 z = np.load(PROJ)
@@ -90,13 +104,16 @@ PA, PB, in17, in18 = z['A'], z['B'], z['in17'], z['in18']
 panels = [(L, '(a)  bottom surface', 'log DOS', 'jet'),
           (R, '(b)  top surface', 'log DOS', 'jet'),
           (BK, '(c)  bulk projection', 'log DOS', 'jet'),
-          (np.log10(only_l + 1e-3),
-           '(d)  bottom surface only  $\\rho_{\\rm surf}-\\rho_{\\rm bulk}\\,N_{\\rm top}/N_{\\rm dim}$',
-           '$\\log_{10}$ surface DOS', 'jet')]
-fig, axs = plt.subplots(1, 4, figsize=(23.0, 6.2), sharex=True, sharey=True)
+          (L - R, '(d)  bottom $-$ top, magnified  —  the Fermi arc',
+           '$\\log(\\rho_{\\rm bot}/\\rho_{\\rm top})$', 'jet')]
+ZL, ZB = (0.045, 0.235), (-0.155, 0.155)      # (d) 확대 창
+fig, axs = plt.subplots(1, 4, figsize=(23.6, 6.2),
+                        gridspec_kw=dict(wspace=0.30))
 for ax, (V, tt, cl, cm) in zip(axs, panels):
-    m = (a >= XL[0]) & (a <= XL[1]); n = (b >= YL[0]) & (b <= YL[1])
-    lo, hi = np.percentile(V[np.ix_(m, n)], [3, 99.3])
+    zoom = tt.startswith('(d)')
+    xl, yl = (ZL, ZB) if zoom else (XL, YL)
+    m = (a >= xl[0]) & (a <= xl[1]); n = (b >= yl[0]) & (b <= yl[1])
+    lo, hi = np.percentile(V[np.ix_(m, n)], [50, 99.7] if zoom else [3, 99.3])
     im = ax.pcolormesh(a, b, V.T, cmap=cm, vmin=lo, vmax=hi,
                        shading='gouraud', rasterized=True)
     c17 = ax.contour(PA, PB, in17.T.astype(float), levels=[0.5],
@@ -107,22 +124,34 @@ for ax, (V, tt, cl, cm) in zip(axs, panels):
         for col in (cc.collections if hasattr(cc, 'collections') else [cc]):
             col.set_path_effects([pe.withStroke(linewidth=3.6, foreground=fg)])
     for ka, kb, c in NODES:
+        if not (xl[0] <= ka <= xl[1] and yl[0] <= kb <= yl[1]):
+            continue
         ax.plot(ka, kb, 'o', ms=13, mfc='none', mec='white', mew=3.4, zorder=6)
         ax.plot(ka, kb, 'o', ms=13, mfc='none', mec='k', mew=1.4, zorder=7)
+        dx, dy = (54, 0) if zoom else (36 if ka > 0 else -36, 22 if kb > 0 else -22)
         ax.annotate('$\\chi=%+d$' % c, xy=(ka, kb),
-                    xytext=(36 if ka > 0 else -36, 22 if kb > 0 else -22),
-                    textcoords='offset points', color='white',
+                    xytext=(dx, dy), textcoords='offset points', color='white',
                     ha='center', va='center', fontsize=13, fontweight='bold',
                     zorder=8, path_effects=STK)
     ax.set_xlabel('$k_a$  (reduced)')
     ax.set_title(tt, fontsize=13.5, pad=8)
-    ax.set_xlim(*XL); ax.set_ylim(*YL)
+    ax.set_xlim(*xl); ax.set_ylim(*yl)
+    if not zoom:
+        ax.set_yticks([-0.2, -0.1, 0.0, 0.1, 0.2])
     cb = fig.colorbar(im, ax=ax, pad=0.02, fraction=0.046)
     cb.set_label(cl, fontsize=11.5)
 axs[0].set_ylabel('$k_b$  (reduced)')
-axs[3].text(0.5, 0.955, 'Fermi arc', transform=axs[3].transAxes, ha='center',
-            va='top', color='white', fontsize=13.5, fontweight='bold',
-            zorder=9, path_effects=STK)
+axs[3].set_ylabel('$k_b$  (reduced)')
+# (a) 위에 확대 창 표시
+from matplotlib.patches import Rectangle
+axs[0].add_patch(Rectangle((ZL[0], ZB[0]), ZL[1] - ZL[0], ZB[1] - ZB[0],
+                           fill=False, ec='white', lw=2.0, ls=':', zorder=9,
+                           path_effects=STK))
+axs[3].annotate('Fermi arc', xy=(0.106, 0.0), xytext=(0.190, 0.0),
+                ha='center', va='center', color='white', fontsize=14,
+                fontweight='bold', zorder=9, path_effects=STK,
+                arrowprops=dict(arrowstyle='-|>', color='white', lw=2.2,
+                                shrinkB=6, path_effects=STK))
 
 fig.legend(handles=[Line2D([], [], color='white', lw=2.0, path_effects=STK,
                            label='band 17 projected edge'),
@@ -134,8 +163,8 @@ fig.legend(handles=[Line2D([], [], color='white', lw=2.0, path_effects=STK,
            framealpha=1.0, fontsize=12.5)
 fig.suptitle('Iso-frequency surface spectrum at the Weyl energy  $\\omega$ = %.4f THz'
              '   (surface $\\perp$ polar axis $c$,  LO-TO on,  $N_p$ = 2,  $\\eta$ = 0.004 THz)\n'
-             'the two projected band edges cross exactly at the four Weyl projections '
-             '— the surface-state region is bounded by them and terminates there' % EARC,
+             'the arc in (d) runs between the two opposite-chirality projections at the same $k_a$, '
+             'terminating exactly where the projected band edges cross' % EARC,
              y=1.055, fontsize=15)
 fig.savefig('figs/fig3_fermi_arc.png')
 print('fig3 저장.  격자 %d x %d,  간격 %.5f x %.5f,  N_top/N_dim = %.3f'
