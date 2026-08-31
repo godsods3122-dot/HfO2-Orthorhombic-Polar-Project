@@ -47,7 +47,8 @@ frame(ax, (lo, hi))
 ax.annotate('min gap on path\n%.3f THz' % g[i], xy=(x[i], (E[16][i] + E[17][i]) / 2),
             xytext=(x[i] + 0.32 * (x[-1] - x[0]) * 0.12, hi - 0.55),
             arrowprops=dict(arrowstyle='->', color='#c0392b', lw=1.6), color='#c0392b', fontsize=12)
-ax.legend(loc='lower right', frameon=True, framealpha=0.95)
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.13), ncol=2,
+          frameon=False, fontsize=12)
 ax.set_title('Bands 17 / 18 along the standard path')
 fig.savefig('figs/fig2_bands17_18_highlight.png')
 plt.close(fig)

@@ -29,9 +29,9 @@ i = np.unravel_index(np.argmin(E18 - E17), E17.shape)
 w0 = E17[i]
 
 BLU, ORG = '#2b6cb0', '#dd6b20'
-fig = plt.figure(figsize=(15.2, 7.0))
+fig = plt.figure(figsize=(15.2, 7.6))
 gs = fig.add_gridspec(1, 2, width_ratios=[1.45, 1.0], wspace=0.26,
-                      left=0.015, right=0.975, bottom=0.10, top=0.90)
+                      left=0.015, right=0.975, bottom=0.17, top=0.92)
 
 # ---------------- (a) 3D 콘
 ax = fig.add_subplot(gs[0], projection='3d')
@@ -69,7 +69,8 @@ ax.legend(handles=[Line2D([], [], color=BLU, lw=4, label='band 17'),
                    Line2D([], [], color=ORG, lw=4, label='band 18'),
                    Line2D([], [], color='k', lw=2.4, ls='-', label='cut along $\\Delta k_a$'),
                    Line2D([], [], color='k', lw=2.4, ls='--', label='cut along $\\Delta k_b$')],
-          loc='upper left', bbox_to_anchor=(-0.02, 0.99), frameon=False, fontsize=12)
+          loc='upper center', bbox_to_anchor=(0.5, -0.02), ncol=2,
+          frameon=False, fontsize=12)
 
 # ---------------- (b) type-II 증거: 두 주축 절단
 bx = fig.add_subplot(gs[1])
@@ -84,8 +85,9 @@ bx.set_xlabel('$\\Delta k$  (reduced)')
 bx.set_ylabel('Frequency (THz)')
 bx.set_title('(b)  cuts through the node', fontsize=15, pad=10)
 bx.grid(alpha=0.22, lw=0.7)
-bx.legend(loc='upper left', fontsize=11.5, frameon=False)
-bx.text(0.97, 0.06,
+bx.legend(loc='upper center', bbox_to_anchor=(0.5, -0.13), ncol=2,
+          fontsize=11.5, frameon=False)
+bx.text(0.97, 0.035,
         'along $\\Delta k_a$ both branches rise\n'
         '$\\Rightarrow$ tilt 2.44 > cone slope 0.97 THz/rlu\n'
         r'$\Rightarrow$ ' + 'type-II Weyl point',

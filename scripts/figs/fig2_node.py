@@ -19,7 +19,7 @@ n = Ec.shape[1] // 2
 xa, Ea = xc[:n], Ec[:, :n]
 xb, Eb = xc[n:] - xc[n], Ec[:, n:]
 
-fig, axes = plt.subplots(1, 3, figsize=(15.5, 5.2),
+fig, axes = plt.subplots(1, 3, figsize=(15.5, 5.6),
                          gridspec_kw=dict(width_ratios=[2.15, 1, 1], wspace=0.28))
 
 ax = axes[0]
@@ -35,7 +35,8 @@ ax.text((ticks[5] + ticks[9]) / 2, 11.62, '$k_c=\\frac{1}{2}$ nodal plane\n(2$_1
         ha='center', va='top', fontsize=11, color='#a33')
 ax.set_xticks(ticks); ax.set_xticklabels(LAB); ax.set_xlim(x[0], x[-1])
 ax.set_ylim(9.1, 11.95); ax.set_ylabel('Frequency (THz)')
-ax.legend(loc='lower left', frameon=True, framealpha=0.95)
+ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2,
+          frameon=False, fontsize=12)
 ax.set_title('(a)  bands 17 / 18 on the standard path', loc='left')
 
 for ax, xx, EE, ttl, sub in ((axes[1], xa, Ea, '(b)  cut along $k_a$', '$k_b$=0.0708, $k_c$=0'),

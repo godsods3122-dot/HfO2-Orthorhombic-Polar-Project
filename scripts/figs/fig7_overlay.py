@@ -19,7 +19,7 @@ SETS = [('parent_pristine', 0.0, 'pristine  (0 %)'),
 cmap = plt.get_cmap('rainbow')
 norm = Normalize(vmin=-3.0, vmax=0.0)
 
-fig, axs = plt.subplots(1, 2, figsize=(15.4, 6.0), gridspec_kw=dict(width_ratios=[1.55, 1], wspace=0.2))
+fig, axs = plt.subplots(1, 2, figsize=(15.4, 6.3), gridspec_kw=dict(width_ratios=[1.55, 1], wspace=0.2))
 x = None
 for tag, eps, lab in SETS:
     d = np.loadtxt('figs/bulkek_%s.dat' % tag)
@@ -42,8 +42,9 @@ for ax, ylim, ttl in ((axs[0], (0, 24.4), '(a)  all 36 branches'),
     ax.set_xticks(ticks); ax.set_xticklabels(LAB); ax.set_xlim(x[0], x[-1])
     ax.set_ylim(*ylim); ax.set_ylabel('Frequency (THz)')
     ax.set_title(ttl, loc='left')
-axs[0].legend(loc='upper left', ncol=2, framealpha=0.94, fontsize=11.5)
-axs[1].legend(loc='lower left', framealpha=0.94, fontsize=11.5)
+h, l = axs[1].get_legend_handles_labels()
+fig.legend(h, l, loc='lower center', bbox_to_anchor=(0.5, -0.055),
+           ncol=len(l), frameon=False, fontsize=13)
 sm = ScalarMappable(norm=norm, cmap=cmap); sm.set_array([])
 cb = fig.colorbar(sm, ax=axs, fraction=0.022, pad=0.015)
 cb.set_label('biaxial strain (%)')

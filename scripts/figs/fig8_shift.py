@@ -1,34 +1,15 @@
 #!/usr/bin/env python3
-"""Fig 6: Weyl 4점의 Wannier charge center.  Fig 8: pristine vs -0.8% Weyl 위치 추이."""
+"""Fig 8: pristine vs -0.8 % 의 바일 4점 위치 추이.
+
+(fig 6 은 `fig6_wcc.py` 로 분리했다 — Simphony 자체 .gnu 와 같은 내용으로
+WCC 합만 그린다.)
+"""
 import sys, os
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import setup, GREY
 setup()
 import matplotlib.pyplot as plt
-
-# ---------------- Fig 6 : WCC
-d = np.loadtxt('work/ppchi/wanniercenter3D_Weyl.dat')
-t = d[:, 0]; P = d[:, 1:]
-ng = P.shape[1] // 4
-chi = [1, -1, -1, 1]
-names = ['$(+k_a,+k_b)$', '$(+k_a,-k_b)$', '$(-k_a,+k_b)$', '$(-k_a,-k_b)$']
-fig, axs = plt.subplots(1, 4, figsize=(16, 4.2), sharey=True)
-for w, ax in enumerate(axs):
-    B = P[:, w * ng:(w + 1) * ng]
-    for j in range(ng - 1):                       # 마지막 열은 합(sum) 이라 제외
-        ax.plot(t, B[:, j], '.', ms=1.6, color='#9aa0a6', rasterized=True)
-    s = B[:, -1]
-    ax.plot(t, s, '.', ms=3.2, color='#c0392b' if chi[w] > 0 else '#1f5fd0')
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_xlabel('$\\theta/\\pi$  (sphere polar angle)')
-    ax.set_title('%s   $\\chi=%+d$' % (names[w], chi[w]), fontsize=13)
-    ax.grid(alpha=0.25, lw=0.7)
-axs[0].set_ylabel('WCC  (Wannier charge center)')
-fig.suptitle('Wilson loops on spheres around the four Weyl nodes  ($r_0$=0.0015 Å$^{-1}$, $N_{k2}$=801, bands 1–17)',
-             y=1.02, fontsize=13.5)
-fig.savefig('figs/fig6_wcc_4weyl.png')
-plt.close(fig)
 
 # ---------------- Fig 8 : Weyl 위치 추이 (표준 a,b,c 좌표)
 RED, BLU = '#c0392b', '#1f5fd0'
@@ -92,5 +73,5 @@ fig.suptitle('Weyl motion under biaxial compression — toward the mirror lines,
              y=0.99, fontsize=15.5)
 fig.savefig('figs/fig8_weyl_shift.png')
 plt.close(fig)
-print('fig6, fig8 저장')
+print('fig8 저장')
 print('이동량 (표준좌표): Delta k_a=%+.5f  Delta k_b=%+.5f  |Delta k|=%.5f' % (dka, dkb, dk))

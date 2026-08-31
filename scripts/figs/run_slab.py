@@ -53,10 +53,12 @@ def main():
     ap.add_argument('--np', dest='npl', type=int, default=5)
     ap.add_argument('--kpath', nargs='*', default=None)
     ap.add_argument('--kplane', nargs='*', default=None)
+    ap.add_argument('--exe', default=None, help='pn.x 경로 (기본: simphony/src/pn.x)')
     a = ap.parse_args()
     patch(os.path.join(a.dir, 'pn.in'), a.mode, a.nk1, a.nk2, a.omin, a.omax,
           a.onum, a.earc, a.eta, a.npl, a.kpath, a.kplane)
-    subprocess.run([os.path.join(ROOT, 'simphony', 'src', 'pn.x')], cwd=a.dir,
+    exe = a.exe or os.path.join(ROOT, 'simphony', 'src', 'pn.x')
+    subprocess.run([exe], cwd=a.dir,
                    stdout=open(os.path.join(a.dir, 'run.log'), 'w'),
                    stderr=subprocess.STDOUT, check=False)
     for f in sorted(os.listdir(a.dir)):
