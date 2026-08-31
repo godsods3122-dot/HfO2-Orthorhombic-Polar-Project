@@ -10,7 +10,7 @@
 아크는 고립 상태가 아니라 공명이다.  raw DOS 로는 벌크에 묻히고,
 위/아래 표면 차 `dos_l − dos_r` 에서 깨끗하게 드러난다.
 """
-import sys, os
+import sys, os, re
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import setup, GREY
@@ -39,11 +39,21 @@ kb, om, L = load('dos.dat_l')
 _, _, R = load('dos.dat_r')
 _, _, BK = load('dos.dat_bulk')
 
+# 표면 전용 DOS.  dos_l 은 표면 단위포 궤도(NtopOrbitals)만, dos_bulk 은 주층
+# 전체(Ndim = Np*Num_wann)를 합하므로 궤도 개수 비로 맞춰야 한다.  Simphony 의
+# dos_l_only 열은 이 보정이 없어 전부 eps9 로 잘려 나온다
+# (patch/apply_surfdos_only_norm_fix.py).
+_s = open(os.path.join(D, 'PN.out')).read()
+RATIO = (int(re.search(r'NtopOrbitals\s+(\d+)', _s).group(1))
+         / int(re.search(r'(?i)\bndim:?\s+(\d+)', _s).group(1)))
+ONLY = np.log10(np.maximum(np.exp(L) - np.exp(BK) * RATIO, 0.0) + 1e-3)
+
 STK = [pe.withStroke(linewidth=3.2, foreground='black')]
 panels = [(L, '(a)  bottom surface', 'log DOS'),
           (R, '(b)  top surface', 'log DOS'),
-          (L - R, '(c)  bottom $-$ top  (Fermi arc isolated)',
-           '$\\log(\\rho_{\\rm bot}/\\rho_{\\rm top})$')]
+          (ONLY, '(c)  bottom surface only  '
+                 '$\\rho_{\\rm surf}-\\rho_{\\rm bulk}N_{\\rm top}/N_{\\rm dim}$',
+           '$\\log_{10}$ surface DOS')]
 fig, axs = plt.subplots(1, 3, figsize=(17.8, 6.0), sharey=True)
 for ax, (V, tt, cl) in zip(axs, panels):
     lo, hi = np.percentile(V, [2, 99.3])
@@ -68,11 +78,6 @@ for ax, (V, tt, cl) in zip(axs, panels):
 axs[0].set_ylabel('Frequency (THz)')
 axs[0].text(0.025, 0.975, '$\\omega_{\\rm Weyl}$ = %.4f THz' % W0, color='white',
             transform=axs[0].transAxes, va='top', fontsize=12.5, path_effects=STK)
-axs[2].annotate('surface branch\nleaving the node', xy=(0.145, 10.145), xytext=(-0.055, 10.290),
-                color='white', fontsize=12.5, fontweight='bold', ha='center',
-                zorder=9, path_effects=STK,
-                arrowprops=dict(arrowstyle='-|>', color='white', lw=2.0,
-                                connectionstyle='arc3,rad=-0.18', path_effects=STK))
 fig.suptitle('Surface spectrum on the line through both Weyl projections  '
              '($k_a$ = %.5f,  surface $\\perp$ $c$,  $\\eta$ = 0.005 THz)\n'
              'the two bulk cones cross at $\\omega_{\\rm Weyl}$ exactly at $k_b = \\pm0.07085$ '

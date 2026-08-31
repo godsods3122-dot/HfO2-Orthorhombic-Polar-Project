@@ -1,90 +1,103 @@
 #!/usr/bin/env python3
-"""Fig 3: ω = 10.0869 THz 등주파수 표면 스펙트럼 (bottom / top / bulk + 아크 분리).
+"""Fig 3: ω = 10.0869 THz 등주파수 표면 스펙트럼 (bottom / top / bulk / 표면 전용).
 
-Simphony SlabArc_calc 의 arc.dat_l / arc.dat_r / arc.dat_bulk 를 읽는다.
+Simphony `SlabArc_calc` 의 arc.dat_l / arc.dat_r / arc.dat_bulk 를 읽는다.
 표면 법선은 c(편극축)이라 표면 BZ 좌표가 (k_a, k_b) 그대로다.
 
-이 물질은 노드 주파수에서 사영 벌크 연속체가 표면 BZ 전체를 덮는다
-(phonopy 로 확인: 창 안 100 %).  그래서 페르미 아크는 간극 속 고립 상태가
-아니라 **공명**이고, 벌크 배경이 큰 raw DOS 만 보면 안 보인다.
-위/아래 표면 차 `dos_l − dos_r` 가 아크만 남긴다 (벌크는 상쇄된다).
+## 이 그림을 제대로 뽑기 위해 고쳐야 했던 것 세 가지
 
-겹쳐 그린 곡선은 phonopy 로 따로 구한 **band 17 / band 18 의 사영 연속체
-경계**다.  두 경계가 교차하는 자리가 정확히 바일 사영점이고, 아크는 거기서
-끝난다.  이게 아크임을 보이는 결정적 증거다.
+1. **LO-TO 누락** (`patch/apply_fermiarc_loto_fix.py`).
+   `fermiarc.f90` 은 `ham_qlayer2qlayer` 를 조건 없이 불러서 SlabArc 가
+   LO-TO 없이 계산됐다.  `surfstat.f90` 은 제대로 갈래를 탄다.
+2. **KPLANE_SLAB 무시** (`patch/apply_fermiarc_kplane_fix.py`).
+   두 벡터를 정수로 올려(ceiling) 항상 full BZ 를 계산했다.
+3. **표면 전용 DOS 정규화** (`patch/apply_surfdos_only_norm_fix.py`).
+   `dos_l` 은 표면 단위포 궤도(NtopOrbitals)만, `dos_bulk` 은 주층 전체
+   (Ndim = Np*Num_wann)를 합한다.  그냥 빼면 벌크를 Np 배로 빼는 셈이라
+   결과가 항상 음수다.  `dos_bulk * NtopOrbitals/Ndim` 로 맞춰야 한다.
+   fermiarc 에는 `_only` 출력 자체가 없어 여기서 후처리로 계산한다.
 
-⚠️ Simphony `fermiarc.f90` 은 KPLANE_SLAB 의 두 벡터를 정수로 올림한다
-(`ceiling`/`floor`, QPI 용). 그래서 좁은 창을 줘도 실제로는 K2D_start 에서
-시작하는 full BZ 한 칸을 계산한다.  파일의 kx, ky 폭이 곧 |b1|, |b2| 이므로
-그걸로 나누면 reduced 좌표가 나온다.  여기서는 [-0.5,0.5) 로 되감는다.
-(`patch/apply_fermiarc_kplane_fix.py` 참조)
+노드 주파수에는 벌크 간극이 없다 (사영 연속체 커버리지 1.000).  그래서
+raw DOS (a,b,c) 로는 아크가 벌크에 묻힌다.  (d) 의 표면 전용 값에서
+표면 상태 영역이 날카롭게 잘리고, 그 경계가 네 바일 사영점을 지난다.
+
+겹쳐 그린 곡선은 phonopy 로 따로 구한 band 17 / band 18 의 사영 연속체
+경계다.  두 경계가 교차하는 자리가 정확히 바일 사영점이다.
 """
-import sys, os
+import sys, os, glob, re
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from style import setup
 setup()
 import matplotlib.pyplot as plt
 import matplotlib.patheffects as pe
+from matplotlib.lines import Line2D
 
-D = sys.argv[1] if len(sys.argv) > 1 else 'work/slabarc'
-XL, YL = (-0.33, 0.33), (-0.23, 0.23)
+DIRS = sys.argv[1:] or sorted(glob.glob('work/arc_loto_*'))
+XL, YL = (-0.30, 0.30), (-0.20, 0.20)
 NODES = [(+0.1464927, +0.0708493, +1), (+0.1464927, -0.0708493, -1),
          (-0.1464927, +0.0708493, -1), (-0.1464927, -0.0708493, +1)]
 EARC = 10.0869
 PROJ = 'figs/proj_continuum_1718.npz'
+STK = [pe.withStroke(linewidth=3.4, foreground='black')]
 
 
-def load(name):
-    d = np.loadtxt(os.path.join(D, name))
-    kx, ky, v = d[:, 0], d[:, 1], d[:, 2]
+def orbital_ratio(d):
+    """NtopOrbitals / Ndim — 표면 합과 벌크 합의 궤도 개수 비."""
+    s = open(os.path.join(d, 'PN.out')).read()
+    nt = int(re.search(r'NtopOrbitals\s+(\d+)', s).group(1))
+    nd = int(re.search(r'(?i)\bndim:?\s+(\d+)', s).group(1))
+    return nt / nd
+
+
+def load_one(d, name):
+    a = np.loadtxt(os.path.join(d, name))
+    kx, ky, v = a[:, 0], a[:, 1], a[:, 2]
     n_in = int(np.argmax(np.diff(ky) < 0) + 1)          # ky 가 안쪽 루프
     n_out = len(v) // n_in
-    V = v.reshape(n_out, n_in)
-    b1, b2 = kx.max() - kx.min(), ky.max() - ky.min()   # = |b1|, |b2| (full BZ)
-    a = kx.reshape(n_out, n_in)[:, 0] / b1
-    b = ky.reshape(n_out, n_in)[0] / b2
-    a, b, V = a[:-1], b[:-1], V[:-1, :-1]               # 마지막은 주기 복제
-    a, b = (a + 0.5) % 1.0 - 0.5, (b + 0.5) % 1.0 - 0.5
-    ia, ib = np.argsort(a), np.argsort(b)
-    return a[ia], b[ib], V[np.ix_(ia, ib)]
+    # KPLANE 패치 후에는 파일 좌표가 지정한 창 그대로다.  reduced 로 되돌리려면
+    # PN.out 의 K2D_start / 벡터를 쓴다.
+    s = open(os.path.join(d, 'PN.out')).read()
+    st = [float(x) for x in re.search(r'K2D_start:\s*(\S+)\s+(\S+)', s).groups()]
+    v1 = [float(x) for x in re.search(r'The first vector:\s*(\S+)\s+(\S+)', s).groups()]
+    v2 = [float(x) for x in re.search(r'The second vector:\s*(\S+)\s+(\S+)', s).groups()]
+    ka = st[0] + v1[0] * np.linspace(0, 1, n_out)
+    kb = st[1] + v2[1] * np.linspace(0, 1, n_in)
+    return ka, kb, v.reshape(n_out, n_in)
 
 
-def projected():
-    """band 17 / 18 의 사영 연속체 (k_c 로 사영). 없으면 phonopy 로 만든다."""
-    if os.path.exists(PROJ):
-        z = np.load(PROJ)
-        return z['A'], z['B'], z['in17'], z['in18']
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
-        os.path.abspath(__file__)))))
-    from weyl_scan import get_ph
-    ph = get_ph('source/parent_pristine')
-    NA, NB, NC = 137, 97, 41
-    A = np.linspace(-0.34, 0.34, NA); B = np.linspace(-0.24, 0.24, NB)
-    C = np.linspace(-0.5, 0.5, NC)
-    ph.run_qpoints([[x, y, z] for x in A for y in B for z in C])
-    f = ph.qpoints.frequencies.reshape(NA, NB, NC, -1)
-    w0 = 10.086936
-    i17 = (f[..., 16].min(2) <= w0) & (f[..., 16].max(2) >= w0)
-    i18 = (f[..., 17].min(2) <= w0) & (f[..., 17].max(2) >= w0)
-    np.savez(PROJ, A=A, B=B, in17=i17, in18=i18)
-    return A, B, i17, i18
+def stitch(name):
+    """k_a 로 쪼개 돌린 조각들을 하나로 붙인다 (경계 중복 열은 버린다)."""
+    parts = [load_one(d, name) for d in DIRS]
+    parts.sort(key=lambda p: p[0][0])
+    kb = parts[0][1]
+    ka = parts[0][0]; V = parts[0][2]
+    for k2, _, V2 in parts[1:]:
+        if abs(k2[0] - ka[-1]) < 1e-9:
+            k2, V2 = k2[1:], V2[1:]
+        ka = np.concatenate([ka, k2]); V = np.concatenate([V, V2], axis=0)
+    return ka, kb, V
 
 
-a, b, L = load('arc.dat_l')
-_, _, R = load('arc.dat_r')
-_, _, BK = load('arc.dat_bulk')
-PA, PB, in17, in18 = projected()
+a, b, L = stitch('arc.dat_l')
+_, _, R = stitch('arc.dat_r')
+_, _, BK = stitch('arc.dat_bulk')
+ratio = orbital_ratio(DIRS[0])
+only_l = np.maximum(np.exp(L) - np.exp(BK) * ratio, 0.0)
+z = np.load(PROJ)
+PA, PB, in17, in18 = z['A'], z['B'], z['in17'], z['in18']
 
-panels = [(L, '(a)  bottom surface', 'log DOS'),
-          (R, '(b)  top surface', 'log DOS'),
-          (BK, '(c)  bulk projection', 'log DOS'),
-          (L - R, '(d)  bottom $-$ top  (Fermi arc isolated)', '$\\log(\\rho_{\\rm bot}/\\rho_{\\rm top})$')]
-fig, axs = plt.subplots(1, 4, figsize=(23.0, 5.9), sharex=True, sharey=True)
-for ax, (V, tt, cl) in zip(axs, panels):
+panels = [(L, '(a)  bottom surface', 'log DOS', 'jet'),
+          (R, '(b)  top surface', 'log DOS', 'jet'),
+          (BK, '(c)  bulk projection', 'log DOS', 'jet'),
+          (np.log10(only_l + 1e-3),
+           '(d)  bottom surface only  $\\rho_{\\rm surf}-\\rho_{\\rm bulk}\\,N_{\\rm top}/N_{\\rm dim}$',
+           '$\\log_{10}$ surface DOS', 'jet')]
+fig, axs = plt.subplots(1, 4, figsize=(23.0, 6.2), sharex=True, sharey=True)
+for ax, (V, tt, cl, cm) in zip(axs, panels):
     m = (a >= XL[0]) & (a <= XL[1]); n = (b >= YL[0]) & (b <= YL[1])
-    lo, hi = np.percentile(V[np.ix_(m, n)], [2, 99])
-    im = ax.pcolormesh(a, b, V.T, cmap='jet', vmin=lo, vmax=hi,
+    lo, hi = np.percentile(V[np.ix_(m, n)], [3, 99.3])
+    im = ax.pcolormesh(a, b, V.T, cmap=cm, vmin=lo, vmax=hi,
                        shading='gouraud', rasterized=True)
     c17 = ax.contour(PA, PB, in17.T.astype(float), levels=[0.5],
                      colors='white', linewidths=1.9)
@@ -97,37 +110,33 @@ for ax, (V, tt, cl) in zip(axs, panels):
         ax.plot(ka, kb, 'o', ms=13, mfc='none', mec='white', mew=3.4, zorder=6)
         ax.plot(ka, kb, 'o', ms=13, mfc='none', mec='k', mew=1.4, zorder=7)
         ax.annotate('$\\chi=%+d$' % c, xy=(ka, kb),
-                    xytext=(34 if ka > 0 else -34, 20 if kb > 0 else -20),
+                    xytext=(36 if ka > 0 else -36, 22 if kb > 0 else -22),
                     textcoords='offset points', color='white',
-                    ha='center', va='center', fontsize=13.5, fontweight='bold', zorder=8,
-                    path_effects=[pe.withStroke(linewidth=3.2, foreground='black')])
+                    ha='center', va='center', fontsize=13, fontweight='bold',
+                    zorder=8, path_effects=STK)
     ax.set_xlabel('$k_a$  (reduced)')
-    ax.set_title(tt, fontsize=14.5, pad=8)
+    ax.set_title(tt, fontsize=13.5, pad=8)
     ax.set_xlim(*XL); ax.set_ylim(*YL)
     cb = fig.colorbar(im, ax=ax, pad=0.02, fraction=0.046)
     cb.set_label(cl, fontsize=11.5)
 axs[0].set_ylabel('$k_b$  (reduced)')
+axs[3].text(0.5, 0.955, 'Fermi arc', transform=axs[3].transAxes, ha='center',
+            va='top', color='white', fontsize=13.5, fontweight='bold',
+            zorder=9, path_effects=STK)
 
-from matplotlib.lines import Line2D
-STK = [pe.withStroke(linewidth=3.6, foreground='black')]
-axs[0].legend(handles=[Line2D([], [], color='white', lw=2.0, path_effects=STK,
-                              label='band 17 projected edge'),
-                       Line2D([], [], color='black', lw=2.0, ls=(0, (5, 3)),
-                              path_effects=[pe.withStroke(linewidth=3.6, foreground='white')],
-                              label='band 18 projected edge')],
-              loc='upper center', bbox_to_anchor=(0.55, -0.155), ncol=2,
-              frameon=True, facecolor='#cfcfcf', edgecolor='#888888',
-              framealpha=1.0, fontsize=12)
-axs[3].text(0.5, 0.955, 'Fermi arc', transform=axs[3].transAxes, ha='center', va='top',
-            color='white', fontsize=13.5, fontweight='bold', zorder=9, path_effects=STK)
-for sgn in (+1, -1):
-    axs[3].annotate('', xy=(sgn * 0.243, 0.163), xytext=(sgn * 0.055, 0.198),
-                    arrowprops=dict(arrowstyle='-|>', color='white', lw=2.0,
-                                    shrinkB=3, path_effects=STK), zorder=9)
-
+fig.legend(handles=[Line2D([], [], color='white', lw=2.0, path_effects=STK,
+                           label='band 17 projected edge'),
+                    Line2D([], [], color='black', lw=2.0, ls='dashed',
+                           path_effects=[pe.withStroke(linewidth=3.6, foreground='white')],
+                           label='band 18 projected edge')],
+           loc='lower center', bbox_to_anchor=(0.5, -0.035), ncol=2,
+           frameon=True, facecolor='#cfcfcf', edgecolor='#888888',
+           framealpha=1.0, fontsize=12.5)
 fig.suptitle('Iso-frequency surface spectrum at the Weyl energy  $\\omega$ = %.4f THz'
-             '   (surface $\\perp$ polar axis $c$,  $N_p$ = 2,  $\\eta$ = 0.008 THz)\n'
-             'the two projected band edges cross exactly at the four Weyl projections — '
-             'the arc terminates there' % EARC, y=1.06, fontsize=15)
+             '   (surface $\\perp$ polar axis $c$,  LO-TO on,  $N_p$ = 2,  $\\eta$ = 0.004 THz)\n'
+             'the two projected band edges cross exactly at the four Weyl projections '
+             '— the surface-state region is bounded by them and terminates there' % EARC,
+             y=1.055, fontsize=15)
 fig.savefig('figs/fig3_fermi_arc.png')
-print('fig3 저장')
+print('fig3 저장.  격자 %d x %d,  간격 %.5f x %.5f,  N_top/N_dim = %.3f'
+      % (len(a), len(b), a[1] - a[0], b[1] - b[0], ratio))
