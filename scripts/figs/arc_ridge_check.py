@@ -17,7 +17,7 @@ import sys
 import numpy as np
 
 npz, maskf = sys.argv[1], sys.argv[2]
-A, B = float(sys.argv[3]), float(sys.argv[4])
+A, B = float(sys.argv[3]), float(sys.argv[4])   # 노드 사영 (|k1|, |k2|), 배열 인덱스 순서
 d = np.load(npz); ks = d['ks']
 gap = np.load(maskf)                       # True = gapped, [ka, kb]
 Z = np.abs(d['raw_d'])
@@ -26,19 +26,31 @@ dk = ks[1] - ks[0]
 ing, outg = Z[gap], Z[~gap]
 print('|raw_d|   간극 영역: max %8.3f  mean %7.3f  (n=%d)' % (ing.max(), ing.mean(), ing.size))
 print('|raw_d| 연속체 영역: max %8.3f  mean %7.3f  (n=%d)' % (outg.max(), outg.mean(), outg.size))
-print('노드 사영 (%.4f, %.4f),  격자 dk=%.4f' % (A, B, dk))
+print('노드 사영 (k1,k2)=(%.4f, %.4f),  격자 dk=%.4f' % (A, B, dk))
 print()
-print('   k_b    경계 k_a   능선 k_a    세기   경계로부터(칸)')
-for j, kb in enumerate(ks):
-    if kb < -1e-9 or kb > 2.2 * B:
-        continue
-    g = gap[:, j] & (ks > 0)
-    if not g.any():
-        print('  %+6.3f   (이 행에 간극 없음)' % kb)
-        continue
-    idx = np.where(g)[0]
-    edge = idx[0]
-    ig = idx[np.argmax(Z[idx, j])]
-    tag = '  <- 노드행' if abs(kb - B) < dk / 2 + 1e-9 else ''
-    print('  %+6.3f   %+7.3f   %+7.3f   %6.3f   %d%s'
-          % (kb, ks[edge], ks[ig], Z[ig, j], ig - edge, tag))
+
+def scan(axis):
+    """axis=0: 첫 인덱스를 훑으며 둘째 인덱스별 행. axis=1: 반대."""
+    fix, run = (B, A) if axis == 0 else (A, B)
+    fname, rname = ('k2', 'k1') if axis == 0 else ('k1', 'k2')
+    print()
+    print('  --- %s 고정, %s 방향으로 훑기 ---' % (fname, rname))
+    print('   %s     경계 %s   능선 %s    세기   경계로부터(칸)' % (fname, rname, rname))
+    for j, kf in enumerate(ks):
+        if kf < -1e-9 or kf > 2.2 * fix:
+            continue
+        g = (gap[:, j] if axis == 0 else gap[j, :]) & (ks > 0)
+        if not g.any():
+            print('  %+6.3f   (이 행에 간극 없음)' % kf)
+            continue
+        z = Z[:, j] if axis == 0 else Z[j, :]
+        idx = np.where(g)[0]
+        edge = idx[0]
+        ig = idx[np.argmax(z[idx])]
+        tag = '  <- 노드행' if abs(kf - fix) < dk / 2 + 1e-9 else ''
+        print('  %+6.3f   %+7.3f   %+7.3f   %6.3f   %d%s'
+              % (kf, ks[edge], ks[ig], z[ig], ig - edge, tag))
+
+
+scan(0)
+scan(1)
