@@ -1084,7 +1084,16 @@ subroutine fermisurface_stack
       
          ! calculation bulk hamiltonian
          Hamk_bulk= 0d0
-         call ham_bulk_latticegauge(k, Hamk_bulk)
+         !> deal with phonon system: gapshape3D used to bypass the LO-TO
+         !> correction entirely, so BulkGap_cube_calc reported the gap of the
+         !> dipole-subtracted short-range force constants. Branch the same way
+         !> ek_bulk and wanniercenter already do. No LOTO_qdir_run is supplied:
+         !> a 3D grid has no path direction, which is the documented usage.
+         if (index(Particle,'phonon')/=0.and.LOTO_correction) then
+            call ham_bulk_LOTO(k, Hamk_bulk)
+         else
+            call ham_bulk_latticegauge(k, Hamk_bulk)
+         endif
       
          call eigensystem_c( 'N', 'U', Num_wann ,Hamk_bulk, W)
          gap(1, ik)= W(Numoccupied+1)- W(Numoccupied)
