@@ -122,28 +122,83 @@ def field(src, na=131, nb=81, h=3e-4):
     return ka, kb, Oa, Ob
 
 
-ka, kb, Oa, Ob = field('source/parent_pristine')
-mag = np.hypot(Oa, Ob)
+LOCAL = 'figs/berry_local_pp.npz'
 
-STK = [pe.withStroke(linewidth=3.0, foreground='black')]
-fig, ax = plt.subplots(figsize=(10.4, 7.2))
-im = ax.pcolormesh(ka, kb, np.log10(mag + 1e-2).T, cmap='inferno',
-                   shading='gouraud', rasterized=True)
-ax.streamplot(ka, kb, Oa.T, Ob.T, color='white', density=1.7,
-              linewidth=0.85, arrowsize=1.05)
-for a, bb, c in NODES:
-    ax.plot(a, bb, 'o', ms=15, mfc='none', mec='#00e5ff', mew=3.0, zorder=6)
-    ax.annotate('$\\chi=%+d$' % c, xy=(a, bb),
-                xytext=(0, 30 if bb > 0 else -30), textcoords='offset points',
-                color='#00e5ff', ha='center', va='center', fontsize=15,
-                fontweight='bold', zorder=8, path_effects=STK)
+
+def local_field(src, nodes, r=0.010, n=25, h=2e-4):
+    """인셋용 — 노드 주변 조밀 격자 (reduced 반경 r)."""
+    if os.path.exists(LOCAL):
+        z = np.load(LOCAL)
+        return z['ka'], z['kb'], z['Oa'], z['Ob']
+    b = Berry(src)
+    KA, KB, OA, OB = [], [], [], []
+    for a0, b0, _ in nodes:
+        xa = np.linspace(a0 - r, a0 + r, n)
+        xb = np.linspace(b0 - r, b0 + r, n)
+        P = np.array([[x * b.n[0], y * b.n[1], 0.0] for x in xa for y in xb])
+        O = b.omega([0.0, 0.0, 0.0], P, h, comps=(0, 1))
+        KA.append(xa); KB.append(xb)
+        OA.append(O[:, 0].reshape(n, n)); OB.append(O[:, 1].reshape(n, n))
+    np.savez(LOCAL, ka=np.array(KA), kb=np.array(KB),
+             Oa=np.array(OA), Ob=np.array(OB))
+    return np.array(KA), np.array(KB), np.array(OA), np.array(OB)
+
+
+ka, kb, Oa, Ob = field('source/parent_pristine')
+INS = [NODES[0], NODES[1]]                      # χ=+1 하나, χ=−1 하나
+lka, lkb, lOa, lOb = local_field('source/parent_pristine', INS)
+
+RED, BLU = '#d62728', '#1f77b4'
+ARROW = '#3b8fd4'
+
+
+def uquiver(ax, A, B, u, v, **kw):
+    """방향만 보이는 균일 길이 화살표."""
+    m = np.hypot(u, v); m[m == 0] = 1.0
+    ax.quiver(A, B, u / m, v / m, color=ARROW, angles='xy',
+              scale_units='width', headwidth=4.2, headlength=4.6,
+              headaxislength=4.0, **kw)
+
+
+fig, ax = plt.subplots(figsize=(11.0, 7.6))
+st = 3
+A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
+uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
+        scale=30, width=0.0030, zorder=2)
+
+LBL = {0: (34, 14), 1: (34, -14), 2: (0, 30), 3: (0, -30)}
+for n, (a, bb, c) in enumerate(NODES):
+    ax.plot(a, bb, 'o', ms=14, color=RED if c > 0 else BLU,
+            mec='white', mew=1.5, zorder=7)
+    ax.annotate('$W_%d$' % (n + 1), xy=(a, bb), xytext=LBL[n],
+                textcoords='offset points', color='#111111', ha='center',
+                va='center', fontsize=17, fontweight='bold', zorder=8)
+
+# 확대 인셋 — 노드가 없는 가운데 세로 띠에 두고 연결선으로 잇는다
+for (a, bb, c), xa, xb, ua, ub, loc in zip(
+        INS, lka, lkb, lOa, lOb,
+        ([0.345, 0.560, 0.310, 0.385], [0.345, 0.055, 0.310, 0.385])):
+    axi = ax.inset_axes(loc, zorder=12)
+    axi.set_facecolor('white')
+    axi.patch.set_alpha(1.0)
+    si = 2                                       # 인셋은 성글게
+    A2, B2 = np.meshgrid(xa[::si], xb[::si], indexing='ij')
+    uquiver(axi, A2, B2, ua[::si, ::si].copy(), ub[::si, ::si].copy(),
+            scale=13, width=0.013)
+    axi.plot(a, bb, 'o', ms=21, color=RED if c > 0 else BLU,
+             mec='white', mew=2.0, zorder=6)
+    axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
+    axi.set_xticks([]); axi.set_yticks([])
+    for sp in axi.spines.values():
+        sp.set_color('#555555'); sp.set_linewidth(1.4)
+    ax.indicate_inset_zoom(axi, edgecolor='#555555', alpha=0.95, lw=1.3)
+
 ax.set_xlim(ka[0], ka[-1]); ax.set_ylim(kb[0], kb[-1])
 ax.set_xlabel('$k_a$  (reduced)')
 ax.set_ylabel('$k_b$  (reduced)')
-cb = fig.colorbar(im, ax=ax, pad=0.02, fraction=0.046)
-cb.set_label('$\\log_{10}|\\Omega|$   ($\\AA^2$)', fontsize=13)
-ax.set_title('Berry curvature field in the polar plane  ($k_c$ = 0)\n'
-             'bands 1–17;  $\\Omega_c \\equiv 0$ here by $(2_1\\!\\parallel\\! c)\\cdot T$,'
-             '  so the field lies in the plane', fontsize=15, pad=12)
+ax.set_title('Berry curvature field of the Weyl quartet  '
+             '(polar plane $k_c$ = 0, bands 1–17)\n'
+             '$W_1,W_4$: $\\chi=+1$ (red)   $W_2,W_3$: $\\chi=-1$ (blue);  '
+             'arrows show direction only', fontsize=15, pad=12)
 fig.savefig('figs/fig9_berry_field.png')
-print('fig9 저장.  격자 %d x %d,  |Ω| %.2e .. %.2e' % (len(ka), len(kb), mag.min(), mag.max()))
+print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d' % (len(ka), len(kb), lka.shape[1], lkb.shape[1]))
