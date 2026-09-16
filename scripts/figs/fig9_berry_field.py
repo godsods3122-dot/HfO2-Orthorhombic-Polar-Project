@@ -206,10 +206,5 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
 ax.set_xlim(ka[0], ka[-1]); ax.set_ylim(kb[0], kb[-1])
 ax.set_xlabel('$k_a$  (reduced)')
 ax.set_ylabel('$k_b$  (reduced)')
-ax.set_title('Berry curvature field of the Weyl quartet  '
-             '(polar plane $k_c$ = 0, bands 1–17)\n'
-             '$W_1,W_4$: $\\chi=+1$ (red, source)   '
-             '$W_2,W_3$: $\\chi=-1$ (blue, sink);  arrows show direction only',
-             fontsize=15, pad=12)
 fig.savefig('figs/fig9_berry_field.png')
 print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d' % (len(ka), len(kb), lka.shape[1], lkb.shape[1]))
