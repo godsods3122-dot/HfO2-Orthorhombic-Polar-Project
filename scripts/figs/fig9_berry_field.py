@@ -233,15 +233,17 @@ uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
 # 않고, 어차피 근거리 장은 완전히 방사형이라 (배경 제거 후 r=0.0006 에서
 # 바깥/안쪽 100 %) 부호 하나로 정보가 다 담긴다.
 # 방향은 Γ 에서 멀어지는 쪽으로 통일했고, 라벨은 그 화살표 바깥에 둔다.
-AL0, AL1, LBL = 0.010, 0.034, 0.059            # 화살표 시작/끝, 라벨 거리
+AL0, AL1, LBL = 0.008, 0.025, 0.050            # 화살표 시작/끝, 라벨 거리
 for n, (a, bb, c) in enumerate(NODES):
     u = np.array([a, bb]) / np.hypot(a, bb)
     col = RED if c > 0 else BLU
+    # 장의 다른 화살표와 똑같이 보이게 한다 (색·굵기·머리 크기·길이 모두 맞춤).
+    # 부호는 노드 점 색과 화살표가 들어가느냐/나가느냐로만 읽는다.
     tail, head = (u * AL0, u * AL1) if c > 0 else (u * AL1, u * AL0)
     ax.annotate('', xy=(a + head[0], bb + head[1]),
                 xytext=(a + tail[0], bb + tail[1]), zorder=9,
-                arrowprops=dict(arrowstyle='-|>,head_width=0.30,head_length=0.55',
-                                color=col, lw=3.4, shrinkA=0, shrinkB=0))
+                arrowprops=dict(arrowstyle='-|>', color=ARROW, lw=1.3,
+                                mutation_scale=15, shrinkA=0, shrinkB=0))
     ax.plot(a, bb, 'o', ms=15, color=col, mec='white', mew=1.6, zorder=10)
     ax.annotate('$W_%d$' % (n + 1), xy=(a + u[0] * LBL, bb + u[1] * LBL),
                 color='#111111', ha='center', va='center', fontsize=17,
