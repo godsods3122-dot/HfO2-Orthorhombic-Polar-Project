@@ -25,8 +25,8 @@ HALF = 0.035                        # bulkek_nodecut.dat 이 노드 ±0.035 를 
 RED, LIGHT = '#c0392b', '#67b0ff'
 
 plt.rcParams.update({
-    'font.size': 24, 'axes.labelsize': 30, 'axes.titlesize': 30,
-    'xtick.labelsize': 25, 'ytick.labelsize': 25, 'legend.fontsize': 24,
+    'font.size': 28, 'axes.labelsize': 36, 'axes.titlesize': 36,
+    'xtick.labelsize': 30, 'ytick.labelsize': 30, 'legend.fontsize': 28,
     'axes.linewidth': 2.2, 'xtick.major.width': 2.2, 'ytick.major.width': 2.2,
     'xtick.major.size': 8, 'ytick.major.size': 8,
     'xtick.direction': 'in', 'ytick.direction': 'in',
@@ -63,8 +63,9 @@ for tag, sl, axis, fixed in (
     ax.set_ylim(EE[16].min() - 0.012, EE[17].max() + 0.012)
     ax.set_xlabel('$k_%s$  (reduced)' % axis, labelpad=10)
     ax.set_ylabel('Frequency (THz)', labelpad=10)
-    ax.text(0.5, 0.025, fixed, transform=ax.transAxes, ha='center',
-            fontsize=22, color='#555')
+    # 밴드 17 이 왼쪽 아래로 내려오므로 고정 파라미터 글씨는 오른쪽으로 비켜 둔다
+    ax.text(0.97, 0.025, fixed, transform=ax.transAxes, ha='right',
+            fontsize=30, color='#555')
     ax.legend(loc='upper left', frameon=False, handlelength=1.6)
     out = 'figs/fig2_cut_%s.png' % tag
     fig.savefig(out)
