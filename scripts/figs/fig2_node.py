@@ -30,13 +30,8 @@ d = np.loadtxt('figs/bulkek_parent_pristine.dat')
 E = d[:, 1].reshape(NB, -1); x = d[:len(d) // NB, 0]
 ticks = [x[i * NK] for i in range(len(LAB) - 1)] + [x[-1]]
 
-# 안쪽 Γ 에서 한 번만 끊는다. NaN 만으로는 단차처럼 보이므로 뒤쪽 x 를 밀어
-# 실제로 벌어진 흰 틈을 만든다 (데이터 값은 그대로).
-GAP = 0.022 * (x[-1] - x[0])
-xs = x.copy(); xs[GAMMA_BREAK:] += GAP
-ticks = [xs[i * NK] for i in range(len(LAB) - 1)] + [xs[-1]]
-ticks[4] = x[GAMMA_BREAK] + GAP / 2
-xp = np.insert(xs, GAMMA_BREAK, np.nan)
+# 안쪽 Γ 에서 한 번만 끊는다. 값 자체가 불연속이라 NaN 하나면 충분하다.
+xp = np.insert(x, GAMMA_BREAK, np.nan)
 Ep = np.insert(E, GAMMA_BREAK, np.nan, axis=1)
 
 c = np.loadtxt('figs/bulkek_nodecut.dat')
@@ -57,19 +52,15 @@ ax.plot([ticks[0], ticks[1]], [WEYL_E, WEYL_E], color=RED, lw=5.5, alpha=0.32,
         solid_capstyle='butt', zorder=1)
 ax.plot(xp, Ep[16], color=BLUE, lw=2.5, label='band 17', zorder=3)
 ax.plot(xp, Ep[17], color='#67b0ff', lw=2.5, label='band 18', zorder=3)
-for n, t in enumerate(ticks[1:-1], start=1):
-    if n == 4:
-        ax.axvline(x[GAMMA_BREAK], color=GREY, lw=0.8, alpha=0.5)
-        ax.axvline(x[GAMMA_BREAK] + GAP, color=GREY, lw=0.8, alpha=0.5)
-    else:
-        ax.axvline(t, color=GREY, lw=0.8, alpha=0.5)
+for t in ticks[1:-1]:
+    ax.axvline(t, color=GREY, lw=0.8, alpha=0.5)
 # 두 밴드가 만나는 점
 xcross = ticks[0] + XC_FRAC * (ticks[1] - ticks[0])
 ax.plot(xcross, XC_E, 'o', ms=10, mfc='none', mec=RED, mew=2.4, zorder=4)
 
 ax.set_xticks(ticks)
-ax.set_xticklabels(LAB, fontsize=15, fontweight='bold')   # 고대칭 경로 볼드
-ax.set_xlim(xs[0], xs[-1])
+ax.set_xticklabels(LAB, fontsize=17)          # 고대칭 경로
+ax.set_xlim(x[0], x[-1])
 ax.set_ylim(9.1, 11.95); ax.set_ylabel('Frequency (THz)')
 from matplotlib.lines import Line2D
 h, l = ax.get_legend_handles_labels()
