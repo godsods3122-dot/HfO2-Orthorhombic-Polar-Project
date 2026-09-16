@@ -15,6 +15,17 @@ POSCAR 자체는 절대 치환하지 않는다 — FORCE_SETS 와 어긋난다.
 | `fig7_strain_overlay.png` | biaxial strain 0 / −0.8 / −1.0 / −2.5 / −3.0 % 밴드 중첩 | `run_band.py` ×5 → `fig7_overlay.py` |
 | `fig8_weyl_shift.png` | 4점 궤도의 이동 (unstrained → −0.8 %) | `fig8_shift.py` |
 
+## 발표(PPT)용 단일 패널 — 폰트 크게, 패널 하나씩
+
+| 파일 | 내용 | 만드는 법 |
+|---|---|---|
+| `fig2_cut_ka.png` | 노드를 지나는 **$k_a$ 방향** 절단. 축은 Δk 가 아니라 절대 $k_a$ (노드 0.14649 를 지난다). 교점 레이블은 `χ = +1` 만 | `fig2_cut_ppt.py` |
+| `fig2_cut_kb.png` | 같은 것의 **$k_b$ 방향** 절단 (절대 $k_b$, 노드 0.07085) | 〃 |
+| `fig5a_weyl_cone.png` | fig 5 의 (a) 3D 콘만, 폰트 크게, 레이블 `χ = +1` 만 | `fig5_cone.py` (같이 나온다) |
+
+fig2 의 (b)=$k_a$ 절단, (c)=$k_b$ 절단이다. 발표에는 X자로 갈라지는 $k_b$ 쪽이
+읽기 쉽고, type-II(두 가지가 같이 올라감)를 보이려면 $k_a$ 쪽이 맞다.
+
 ## 숫자 요약 (발표에 그대로 쓸 수 있는 값)
 
 | 항목 | 값 | 출처 |
