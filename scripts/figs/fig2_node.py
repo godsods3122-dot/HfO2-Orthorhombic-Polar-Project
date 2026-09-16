@@ -20,7 +20,9 @@ NB, NK = 36, 120
 LAB = ['Γ', 'X', 'S', 'Y', 'Γ', 'Z', 'U', 'R', 'T', 'Z']
 GAMMA_BREAK = 4 * NK            # 안쪽 Γ — LO-TO 방향 의존으로 불연속
 
-# Γ-X 위 교점 (phonopy 정밀화, 이 파일 docstring 참조)
+# Weyl 노드 에너지 — Γ-X 구간에 이 높이를 반투명 띠로 표시한다 (노드 자체는 경로 밖)
+WEYL_E = 10.086936
+# Γ-X 위에서 밴드 17/18 이 실제로 만나는 점 (phonopy 정밀화, 이 파일 docstring 참조)
 XC_FRAC, XC_E = 0.185742 / 0.5, 10.192507
 RED = '#c0392b'
 
@@ -45,8 +47,8 @@ ax = axes[0]
 for b in range(NB):
     if b not in (16, 17):
         ax.plot(xp, Ep[b], color='#c8c8c8', lw=1.0)
-# Γ-X 구간에만 교점 에너지를 반투명 굵은 선으로
-ax.plot([ticks[0], ticks[1]], [XC_E, XC_E], color=RED, lw=5.0, alpha=0.32,
+# Γ-X 구간에만 Weyl 노드 에너지를 반투명 굵은 선으로
+ax.plot([ticks[0], ticks[1]], [WEYL_E, WEYL_E], color=RED, lw=5.5, alpha=0.32,
         solid_capstyle='butt', zorder=1)
 ax.plot(xp, Ep[16], color=BLUE, lw=2.5, label='band 17', zorder=3)
 ax.plot(xp, Ep[17], color='#67b0ff', lw=2.5, label='band 18', zorder=3)
@@ -55,13 +57,18 @@ for t in ticks[1:-1]:
 # 두 밴드가 만나는 점
 xcross = ticks[0] + XC_FRAC * (ticks[1] - ticks[0])
 ax.plot(xcross, XC_E, 'o', ms=10, mfc='none', mec=RED, mew=2.4, zorder=4)
-ax.text(ticks[0] + 1.05 * (ticks[1] - ticks[0]), 9.78, '%.3f THz' % XC_E,
-        ha='center', va='center', fontsize=11, color=RED, zorder=5,
-        bbox=dict(fc='white', ec='none', alpha=0.85, pad=1.5))
+
 ax.set_xticks(ticks); ax.set_xticklabels(LAB); ax.set_xlim(x[0], x[-1])
 ax.set_ylim(9.1, 11.95); ax.set_ylabel('Frequency (THz)')
-ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.16), ncol=2,
-          frameon=False, fontsize=12)
+from matplotlib.lines import Line2D
+h, l = ax.get_legend_handles_labels()
+h += [Line2D([], [], color=RED, lw=5.5, alpha=0.32),
+      Line2D([], [], ls='none', marker='o', ms=9, mfc='none', mec=RED, mew=2.2)]
+l += ['Weyl node  %.3f THz' % WEYL_E,
+      'bands 17/18 meet on $\\Gamma$–X  %.3f THz' % XC_E]
+ax.legend(h, l, loc='upper center', bbox_to_anchor=(0.5, -0.155), ncol=2,
+          frameon=False, fontsize=11.5, handlelength=2.4,
+          columnspacing=2.4, labelspacing=0.7)
 ax.set_title('(a)  bands 17 / 18 on the standard path', loc='left')
 
 for ax, xx, EE, ttl, sub in ((axes[1], xa, Ea, '(b)  cut along $k_a$', '$k_b$=0.0708, $k_c$=0'),

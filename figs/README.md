@@ -7,7 +7,7 @@ POSCAR 자체는 절대 치환하지 않는다 — FORCE_SETS 와 어긋난다.
 | 파일 | 내용 | 만드는 법 |
 |---|---|---|
 | `fig1_dispersion_parent_pristine.png` | parent_pristine 포논 분산, Γ-X-S-Y-Γ-Z-U-R-T-Z | `run_band.py` → `fig1_2_bands.py` |
-| `fig2_bands17_18_node.png` | 밴드 17/18 강조 + 노드 주변 절단 2장. 안쪽 Γ 는 LO-TO 방향 의존으로 불연속이라 선을 끊어 그린다 (아래 주의). Γ-X 교점을 표시 | `fig2_node.py` |
+| `fig2_bands17_18_node.png` | 밴드 17/18 강조 + 노드 주변 절단 2장. 안쪽 Γ 는 LO-TO 방향 의존으로 불연속이라 선을 끊어 그린다 (아래 주의). Γ-X 구간에 **Weyl 노드 에너지**(10.087 THz)를 반투명 띠로, 그 구간에서 밴드 17/18 이 실제로 만나는 점을 원으로 표시 | `fig2_node.py` |
 | `fig3_surface_spectrum.png` | ω = 10.0869 THz 표면 스펙트럼 `dos_l − dos_r` (단일 패널, 보조선 없음) | `run_slab.py --mode arc` → `fig3_arc.py` |
 | `fig4_slab_arc.png` | `k_b`=0 위의 표면 스펙트럼 (보조) | `run_slab.py --mode ss` → `fig4_slabss.py` |
 | `fig5_weyl_cone.png` | 바일 콘 3D + 주축 절단 (type-II 증거) | `fig5_cone.py` |
@@ -47,9 +47,15 @@ LO-TO 비해석항은 Γ 로 **접근하는 방향**에 의존하므로 `Y→Γ`
 (특히 band 20 은 그림 세로 범위 한가운데를 가로지른다). `fig2_node.py` 는 그 지점에
 NaN 을 끼워 선을 끊는다.
 
-## fig 2 의 Γ-X 교점
+## fig 2 의 Γ-X 구간 표시 두 가지 — 서로 다른 것이다
 
-Γ-X 는 거울면 위 선이라 밴드 17/18 이 만날 수 있고 (χ=0 강제), 실제로 만난다:
+**반투명 붉은 띠 = Weyl 노드 에너지 10.086936 THz.** 노드 자체는 `(0.1465, 0.0708, 0)`
+로 **경로 위에 없으므로** 점으로 찍을 수 없다. 그 대신 "노드가 어느 높이에 있는가" 를
+Γ-X 구간에 띠로 표시한다.
+
+**빨간 원 = 밴드 17/18 이 Γ-X 위에서 실제로 만나는 점.** 이건 노드와 다른 것이고
+높이도 다르다 (10.193 vs 10.087 THz). Γ-X 는 거울면 위 선이라 χ=0 이 강제되므로
+여기 만나는 점은 Weyl 이 될 수 없다.
 **t = 0.185742, E = 10.192507 THz, gap 1.6e-11**.
 
 격자 데이터 `bulkek_parent_pristine.dat` (Γ-X 를 120점) 의 최소 gap 은 1.9e-3 THz 인데,
