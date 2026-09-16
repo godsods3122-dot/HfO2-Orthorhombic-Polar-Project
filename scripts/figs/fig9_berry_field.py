@@ -125,7 +125,7 @@ def field(src, na=131, nb=81, h=3e-4):
 LOCAL = 'figs/berry_local_pp.npz'
 
 
-def local_field(src, nodes, r=0.010, n=25, h=2e-4):
+def local_field(src, nodes, r=0.0006, n=19, h=4e-5):
     """인셋용 — 노드 주변 조밀 격자 (reduced 반경 r)."""
     if os.path.exists(LOCAL):
         z = np.load(LOCAL)
@@ -144,9 +144,21 @@ def local_field(src, nodes, r=0.010, n=25, h=2e-4):
     return np.array(KA), np.array(KB), np.array(OA), np.array(OB)
 
 
+# 부호 규약.  이 FHS 구현의 Ω 부호는 Simphony 의 χ 와 전체적으로 반대다
+# (프로젝트 노트의 "up to a global sign" 그대로).  근거리 측정:
+#   (+a,+b) <cos>=-1.0000  vs Simphony χ=+1
+#   (+a,-b) <cos>=+1.0000  vs Simphony χ=-1
+#   (-a,+b) <cos>=+1.0000  vs Simphony χ=-1
+#   (-a,-b) <cos>=-1.0000  vs Simphony χ=+1
+# 교대 패턴은 완벽히 일치하므로 어느 노드가 source/sink 인지는 이 계산이
+# 독립적으로 확인한다.  전체 부호만 Simphony 에 맞춰 뒤집는다.
+SIGN = -1.0
+
 ka, kb, Oa, Ob = field('source/parent_pristine')
+Oa, Ob = SIGN * Oa, SIGN * Ob
 INS = [NODES[0], NODES[1]]                      # χ=+1 하나, χ=−1 하나
 lka, lkb, lOa, lOb = local_field('source/parent_pristine', INS)
+lOa, lOb = SIGN * lOa, SIGN * lOb
 
 RED, BLU = '#d62728', '#1f77b4'
 ARROW = '#3b8fd4'
@@ -181,10 +193,8 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     axi = ax.inset_axes(loc, zorder=12)
     axi.set_facecolor('white')
     axi.patch.set_alpha(1.0)
-    si = 2                                       # 인셋은 성글게
-    A2, B2 = np.meshgrid(xa[::si], xb[::si], indexing='ij')
-    uquiver(axi, A2, B2, ua[::si, ::si].copy(), ub[::si, ::si].copy(),
-            scale=13, width=0.013)
+    A2, B2 = np.meshgrid(xa, xb, indexing='ij')
+    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=15, width=0.012)
     axi.plot(a, bb, 'o', ms=21, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
@@ -198,7 +208,8 @@ ax.set_xlabel('$k_a$  (reduced)')
 ax.set_ylabel('$k_b$  (reduced)')
 ax.set_title('Berry curvature field of the Weyl quartet  '
              '(polar plane $k_c$ = 0, bands 1–17)\n'
-             '$W_1,W_4$: $\\chi=+1$ (red)   $W_2,W_3$: $\\chi=-1$ (blue);  '
-             'arrows show direction only', fontsize=15, pad=12)
+             '$W_1,W_4$: $\\chi=+1$ (red, source)   '
+             '$W_2,W_3$: $\\chi=-1$ (blue, sink);  arrows show direction only',
+             fontsize=15, pad=12)
 fig.savefig('figs/fig9_berry_field.png')
 print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d' % (len(ka), len(kb), lka.shape[1], lkb.shape[1]))
