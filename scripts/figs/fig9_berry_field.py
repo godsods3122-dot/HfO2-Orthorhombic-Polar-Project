@@ -115,7 +115,7 @@ LOCAL = 'figs/berry_local_sq.npz'
 INS_R = 0.00015                               # 인셋 반경 (reduced)
 
 
-def field(src, n=37, h=3e-4):
+def field(src, n=21, h=3e-4):
     """정사각 창의 성긴 격자.  그리는 해상도 그대로 계산한다."""
     if os.path.exists(CACHE):
         z = np.load(CACHE)
@@ -194,7 +194,7 @@ QKW = dict(color=ARROW, angles='xy', scale_units='width',
            headwidth=6.0, headlength=6.5, headaxislength=5.2)
 
 
-def scaled(u, v, lo=8, hi=99, floor=0.34):
+def scaled(u, v, lo=8, hi=99, floor=0.50):
     """길이를 log|Ω| 로 압축한 화살표 성분.
 
     |Ω| 는 노드에서 1/r² 로 발산하고 먼 곳에서는 거의 0 이라 선형 길이로는
@@ -213,7 +213,7 @@ def scaled(u, v, lo=8, hi=99, floor=0.34):
 
 FIG = 9.8
 fig, ax = plt.subplots(figsize=(FIG, FIG))
-SCALE, WIDTH = 22, 0.0042
+SCALE, WIDTH = 18, 0.0030
 
 A, B = np.meshgrid(ka, kb, indexing='ij')
 GX, GY = A.ravel(), B.ravel()
