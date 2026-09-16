@@ -125,7 +125,7 @@ def field(src, na=131, nb=81, h=3e-4):
 LOCAL = 'figs/berry_local_pp.npz'
 
 
-def local_field(src, nodes, r=0.0006, n=19, h=4e-5):
+def local_field(src, nodes, r=0.0006, n=15, h=4e-5):
     """인셋용 — 노드 주변 조밀 격자 (reduced 반경 r)."""
     if os.path.exists(LOCAL):
         z = np.load(LOCAL)
@@ -176,7 +176,7 @@ fig, ax = plt.subplots(figsize=(11.0, 7.6))
 st = 3
 A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
 uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
-        scale=30, width=0.0030, zorder=2)
+        scale=42, width=0.0023, zorder=2)
 
 LBL = {0: (34, 14), 1: (34, -14), 2: (0, 30), 3: (0, -30)}
 for n, (a, bb, c) in enumerate(NODES):
@@ -194,7 +194,7 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     axi.set_facecolor('white')
     axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
-    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=15, width=0.012)
+    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=19, width=0.0095)
     axi.plot(a, bb, 'o', ms=21, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
