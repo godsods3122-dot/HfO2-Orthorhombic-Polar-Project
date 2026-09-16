@@ -232,14 +232,15 @@ keep = d.min(axis=(1, 2)) > 0.11               # 노드 표식을 가리지 않�
 ax.quiver(GX[keep], GY[keep], GU[keep], GV[keep],
           scale=SCALE, width=WIDTH, zorder=2, **QKW)
 
-LBL = 0.055
+LBL = 0.062
 for n, (a, bb, c) in enumerate(NODES):
     u = np.array([a, bb]) / np.hypot(a, bb)
     ax.plot(a, bb, 'o', ms=16, color=RED if c > 0 else BLU,
             mec='white', mew=1.8, zorder=10)
     ax.annotate('$W_%d$' % (n + 1), xy=(a + u[0] * LBL, bb + u[1] * LBL),
-                color='#111111', ha='center', va='center', fontsize=19,
-                fontweight='bold', zorder=10)
+                color='black', ha='center', va='center', fontsize=30,
+                fontweight='bold', zorder=11,
+                path_effects=[pe.withStroke(linewidth=5, foreground='white')])
 
 # 확대 인셋 — 노드가 없는 가운데 세로 띠
 for (a, bb, c), xa, xb, ua, ub, loc in zip(
