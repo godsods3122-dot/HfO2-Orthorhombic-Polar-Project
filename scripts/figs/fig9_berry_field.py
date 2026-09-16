@@ -106,8 +106,8 @@ class Berry:
 
 
 RINGS = 'figs/berry_rings_pp.npz'
-RADII = (0.0008, 0.0019, 0.0042, 0.0080)      # reduced
-NANG = 12
+RADII = (0.0006, 0.0035)                      # reduced
+NANG = 8
 
 CACHE = 'figs/berry_plane_pp.npz'
 
@@ -222,7 +222,7 @@ A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
 U, V = Oa[::st, ::st].copy(), Ob[::st, ::st].copy()
 near = np.zeros(A.shape, bool)                 # 링이 덮는 자리는 격자를 뺀다
 for a0, b0, _ in NODES:
-    near |= np.hypot(A - a0, B - b0) < 0.011
+    near |= np.hypot(A - a0, B - b0) < 0.006
 U[near] = 0.0; V[near] = 0.0
 uquiver(ax, A, B, U, V, scale=30, width=0.0022, zorder=2)
 uquiver(ax, rP[:, 0], rP[:, 1], rO[:, 0].copy(), rO[:, 1].copy(),
