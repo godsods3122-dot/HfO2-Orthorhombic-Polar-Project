@@ -186,8 +186,6 @@ Oa, Ob = SIGN * Oa, SIGN * Ob
 INS = [NODES[0], NODES[1]]                     # χ=+1 하나, χ=−1 하나
 lka, lkb, lOa, lOb = local_field('source/parent_pristine', INS)
 lOa, lOb = SIGN * lOa, SIGN * lOb
-rP, rO = ring_field('source/parent_pristine', NODES)
-rO = SIGN * rO
 
 RED, BLU, ARROW = '#d62728', '#1f77b4', '#3b8fd4'
 QKW = dict(color=ARROW, angles='xy', scale_units='width',
@@ -219,23 +217,20 @@ A, B = np.meshgrid(ka, kb, indexing='ij')
 GX, GY = A.ravel(), B.ravel()
 GU, GV = (c.ravel() for c in scaled(Oa.copy(), Ob.copy()))
 
-# 노드 최근접 화살표 — 실측 링.  격자와 같은 quiver·같은 scaled() 라 규격이 같다.
+# 노드 근처에 화살표가 몰리지 않도록, 전체 장에는 규칙 격자만 그린다.
+# monopole 구조(링)는 확대 인셋에서만 보여준다 — 주 축척에서는 어차피
+# monopole 영역(r<=0.0008)이 2~3 픽셀이라 뭉칠 수밖에 없다.
 ALEN = 2 * KMAX / SCALE
-NX, NY = rP[:, 0], rP[:, 1]
-NU, NV = scaled(rO[:, 0].copy(), rO[:, 1].copy(), lo=2, hi=98, floor=0.55)
-
-# 링과 겹치는 격자 화살표는 뺀다 (선분 표본 사이 최소거리를 인치로 환산해 판정)
 INCH = 2 * KMAX / FIG
 t = np.linspace(0, 1, 6)[:, None]
 G = np.stack([GX + GU * ALEN * t, GY + GV * ALEN * t], -1).transpose(1, 0, 2)
-N = np.stack([NX + NU * ALEN * t, NY + NV * ALEN * t], -1).reshape(-1, 2)
+N = np.array([[a, bb] for a, bb, _ in NODES])
 d = np.hypot(G[:, :, None, 0] - N[None, None, :, 0],
              G[:, :, None, 1] - N[None, None, :, 1]) / INCH
-keep = d.min(axis=(1, 2)) > 0.10               # 0.10 inch
+keep = d.min(axis=(1, 2)) > 0.11               # 노드 표식을 가리지 않게
 
 ax.quiver(GX[keep], GY[keep], GU[keep], GV[keep],
           scale=SCALE, width=WIDTH, zorder=2, **QKW)
-ax.quiver(NX, NY, NU, NV, scale=SCALE, width=WIDTH, zorder=9, **QKW)
 
 LBL = 0.055
 for n, (a, bb, c) in enumerate(NODES):
@@ -253,8 +248,8 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     axi = ax.inset_axes(loc, zorder=12)
     axi.set_facecolor('white'); axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
-    su, sv = scaled(ua.copy(), ub.copy(), lo=5, hi=95, floor=0.55)
-    axi.quiver(A2, B2, su, sv, scale=11, width=0.013, **QKW)
+    su, sv = scaled(ua.copy(), ub.copy(), lo=5, hi=95, floor=0.70)
+    axi.quiver(A2, B2, su, sv, scale=8.5, width=0.0090, **QKW)
     axi.plot(a, bb, 'o', ms=16, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
