@@ -47,7 +47,7 @@ for tag, sl, axis, fixed in (
     k = np.linspace(k0 - HALF, k0 + HALF, EE.shape[1])
     i = int(np.argmin(EE[17] - EE[16]))
 
-    fig, ax = plt.subplots(figsize=(9.6, 7.8))
+    fig, ax = plt.subplots(figsize=(12.4, 7.8))
     for b in range(NB):
         if b not in (16, 17):
             ax.plot(k, EE[b], color='#c8c8c8', lw=1.6)
@@ -63,9 +63,8 @@ for tag, sl, axis, fixed in (
     ax.set_ylim(EE[16].min() - 0.012, EE[17].max() + 0.012)
     ax.set_xlabel('$k_%s$  (reduced)' % axis, labelpad=10)
     ax.set_ylabel('Frequency (THz)', labelpad=10)
-    # 밴드 17 이 왼쪽 아래로 내려오므로 고정 파라미터 글씨는 오른쪽으로 비켜 둔다
-    ax.text(0.97, 0.025, fixed, transform=ax.transAxes, ha='right',
-            fontsize=30, color='#555')
+    # 고정 파라미터는 그림 위 제목 자리로 — 크게 키워도 밴드와 안 겹친다
+    ax.set_title(fixed, fontsize=58, color='#555', pad=16)
     ax.legend(loc='upper left', frameon=False, handlelength=1.6)
     out = 'figs/fig2_cut_%s.png' % tag
     fig.savefig(out)
