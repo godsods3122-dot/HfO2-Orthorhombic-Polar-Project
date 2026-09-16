@@ -58,7 +58,9 @@ for t in ticks[1:-1]:
 xcross = ticks[0] + XC_FRAC * (ticks[1] - ticks[0])
 ax.plot(xcross, XC_E, 'o', ms=10, mfc='none', mec=RED, mew=2.4, zorder=4)
 
-ax.set_xticks(ticks); ax.set_xticklabels(LAB); ax.set_xlim(x[0], x[-1])
+ax.set_xticks(ticks)
+ax.set_xticklabels(LAB, fontsize=15, fontweight='bold')   # 고대칭 경로 볼드
+ax.set_xlim(x[0], x[-1])
 ax.set_ylim(9.1, 11.95); ax.set_ylabel('Frequency (THz)')
 from matplotlib.lines import Line2D
 h, l = ax.get_legend_handles_labels()

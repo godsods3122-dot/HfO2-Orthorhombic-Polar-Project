@@ -19,6 +19,7 @@ POSCAR 자체는 절대 치환하지 않는다 — FORCE_SETS 와 어긋난다.
 
 | 파일 | 내용 | 만드는 법 |
 |---|---|---|
+| `fig2_path_ppt.png` | fig 2 의 (a) 표준 경로 밴드만, 폰트 크게 + **고대칭점 볼드** | `fig2_path_ppt.py` |
 | `fig2_cut_ka.png` | 노드를 지나는 **$k_a$ 방향** 절단. 축은 Δk 가 아니라 절대 $k_a$ (노드 0.14649 를 지난다). 교점 레이블은 `χ = +1` 만 | `fig2_cut_ppt.py` |
 | `fig2_cut_kb.png` | 같은 것의 **$k_b$ 방향** 절단 (절대 $k_b$, 노드 0.07085) | 〃 |
 | `fig5a_weyl_cone.png` | fig 5 의 (a) 3D 콘만, 폰트 크게, 레이블 `χ = +1` 만 | `fig5_cone.py` (같이 나온다) |
