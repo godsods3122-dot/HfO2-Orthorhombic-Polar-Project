@@ -24,8 +24,8 @@ XC_FRAC, XC_E = 0.185742 / 0.5, 10.192507
 RED, LIGHT = '#c0392b', '#67b0ff'
 
 plt.rcParams.update({
-    'font.size': 28, 'axes.labelsize': 56, 'legend.fontsize': 28,
-    'ytick.labelsize': 36, 'xtick.labelsize': 88,
+    'font.size': 28, 'axes.labelsize': 48, 'legend.fontsize': 28,
+    'ytick.labelsize': 34, 'xtick.labelsize': 60,
     'axes.linewidth': 2.4, 'xtick.major.width': 2.4, 'ytick.major.width': 2.4,
     'xtick.major.size': 9, 'ytick.major.size': 9,
     'xtick.direction': 'in', 'ytick.direction': 'in', 'ytick.right': True,
@@ -55,7 +55,7 @@ ax.plot(ticks[0] + XC_FRAC * (ticks[1] - ticks[0]), XC_E, 'o',
         ms=20, mfc='none', mec=RED, mew=4.0, zorder=4)
 
 ax.set_xticks(ticks)
-ax.set_xticklabels(LAB, fontsize=88)          # 고대칭 경로 — 볼드 없이 크게
+ax.set_xticklabels(LAB, fontsize=60)          # 고대칭 경로 — 볼드 없이 크게
 ax.set_xlim(x[0], x[-1]); ax.set_ylim(9.1, 11.95)
 ax.set_ylabel('Frequency (THz)', labelpad=12)
 ax.tick_params(axis='x', pad=10)
@@ -65,7 +65,7 @@ h += [Line2D([], [], color=RED, lw=11.0, alpha=0.30),
       Line2D([], [], ls='none', marker='o', ms=16, mfc='none', mec=RED, mew=3.6)]
 l += ['Weyl node  %.3f THz' % WEYL_E,
       'bands 17/18 meet  %.3f THz' % XC_E]
-ax.legend(h, l, loc='upper center', bbox_to_anchor=(0.5, -0.255), ncol=2,
+ax.legend(h, l, loc='upper center', bbox_to_anchor=(0.5, -0.135), ncol=2,
           frameon=False, handlelength=2.0, columnspacing=3.0, labelspacing=0.6)
 
 fig.savefig('figs/fig2_path_ppt.png')
