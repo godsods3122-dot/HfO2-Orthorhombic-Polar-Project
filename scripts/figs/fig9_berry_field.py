@@ -231,17 +231,13 @@ SCALE, WIDTH = 30, 0.0022
 GX, GY = A.ravel(), B.ravel()
 GU, GV = (c.ravel() for c in scaled(Oa[::st, ::st].copy(), Ob[::st, ::st].copy()))
 
-# 노드 화살표.  격자와 같은 quiver 에 넣어야 규격이 완전히 같아진다.
-# quiver 길이 = 성분 / SCALE × 축 가로폭 이므로, 성분 1.0 이 격자 최대 길이다.
+# 노드 최근접 화살표.  격자(간격 0.012)는 monopole 영역(r<=0.0008)을 표본조차
+# 못 하므로, 노드마다 실측 링(r = 0.0006, 0.0025 / 각 8방향, 링평균=국소배경을
+# 뺀 값)을 같은 quiver 에 넣는다.  규격이 완전히 같아야 하므로 성분 스케일링도
+# 격자와 같은 scaled() 를 쓴다.
 ALEN = (ka[-1] - ka[0]) / SCALE
-AL0 = 0.009                                    # 노드에서 화살표 시작까지
-NX, NY, NU, NV = [], [], [], []
-for a, bb, c in NODES:
-    u = np.array([a, bb]) / np.hypot(a, bb)    # Γ 에서 멀어지는 방향
-    base = np.array([a, bb]) + u * (AL0 if c > 0 else AL0 + ALEN)
-    NX.append(base[0]); NY.append(base[1])
-    NU.append(u[0] * (1 if c > 0 else -1)); NV.append(u[1] * (1 if c > 0 else -1))
-NX, NY, NU, NV = map(np.asarray, (NX, NY, NU, NV))
+NX, NY = rP[:, 0], rP[:, 1]
+NU, NV = scaled(rO[:, 0].copy(), rO[:, 1].copy(), lo=2, hi=98, floor=0.55)
 
 # 노드 화살표와 겹치는 격자 화살표는 뺀다 (선분 표본 사이 최소거리로 판정).
 # 데이터 단위는 x,y 축척이 달라 인치로 환산해 시각적 거리로 잰다.
@@ -288,7 +284,9 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     ax.indicate_inset_zoom(axi, edgecolor='#555555', alpha=0.95, lw=1.3)
 
 ax.set_xlim(ka[0], ka[-1]); ax.set_ylim(kb[0], kb[-1])
-ax.set_xlabel('$k_a$  (reduced)')
-ax.set_ylabel('$k_b$  (reduced)')
+ax.set_xlabel('$k_a$  (reduced)', fontweight='bold')
+ax.set_ylabel('$k_b$  (reduced)', fontweight='bold')
+for lab in ax.get_xticklabels() + ax.get_yticklabels():
+    lab.set_fontweight('bold')
 fig.savefig('figs/fig9_berry_field.png')
 print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d' % (len(ka), len(kb), lka.shape[1], lkb.shape[1]))
