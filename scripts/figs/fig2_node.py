@@ -76,10 +76,12 @@ for ax, xx, EE, ttl, sub in ((axes[1], xa, Ea, '(b)  cut along $k_a$', '$k_b$=0.
     for b in range(NB):
         if b not in (16, 17):
             ax.plot(xx, EE[b], color='#c8c8c8', lw=1.0)
-    ax.plot(xx, EE[16], color=BLUE, lw=2.6)
-    ax.plot(xx, EE[17], color='#67b0ff', lw=2.6)
+    # (a) 와 같은 높이의 Weyl 노드 에너지 띠 — 여기서는 교점이 곧 노드다
+    ax.axhline(WEYL_E, color=RED, lw=5.5, alpha=0.32, zorder=1)
+    ax.plot(xx, EE[16], color=BLUE, lw=2.6, zorder=3)
+    ax.plot(xx, EE[17], color='#67b0ff', lw=2.6, zorder=3)
     g = EE[17] - EE[16]; i = int(np.argmin(g))
-    ax.plot(xx[i], EE[16][i], 'o', ms=9, mfc='none', mec=RED, mew=2.2)
+    ax.plot(xx[i], EE[16][i], 'o', ms=9, mfc='none', mec=RED, mew=2.2, zorder=4)
     ax.set_xticks([xx[0], xx[i], xx[-1]]); ax.set_xticklabels(['−0.035', '0', '+0.035'])
     ax.set_xlabel('Δk (reduced)')
     ax.set_ylim(EE[16].min() - 0.09, EE[17].max() + 0.09)
