@@ -45,8 +45,8 @@ for E, c in ((E17, BLU), (E18, ORG)):
     ax.plot(a, np.full(N, 0.0), E[:, j], color=c, lw=3.4, zorder=9)
     ax.plot(np.full(N, 0.0), a, E[j, :], color=c, lw=3.4, ls='--', zorder=9)
 ax.scatter([0], [0], [w0], s=95, c='k', depthshade=False, zorder=12)
-ax.text2D(0.60, 0.80, 'Weyl,  $\\chi=+1$\n10.0869 THz', transform=ax.transAxes,
-          fontsize=13, ha='left', va='center',
+ax.text2D(0.60, 0.80, '$\\chi=+1$', transform=ax.transAxes,
+          fontsize=15, ha='left', va='center',
           bbox=dict(boxstyle='round,pad=0.35', fc='white', ec='#cccccc', alpha=0.92))
 ax.annotate('', xy=(0.505, 0.505), xytext=(0.60, 0.775), xycoords='axes fraction',
             textcoords='axes fraction',
@@ -96,3 +96,45 @@ bx.text(0.97, 0.035,
 
 fig.savefig('figs/fig5_weyl_cone.png', bbox_inches=None)
 print('fig5 저장.  gap = %.3e THz,  w0 = %.6f THz' % ((E18 - E17)[i], w0))
+
+# ---------------- 발표용: (a) 3D 콘만, 폰트 크게 -----------------------------
+plt.rcParams.update({
+    'font.size': 22, 'axes.labelsize': 28, 'axes.titlesize': 28,
+    'xtick.labelsize': 19, 'ytick.labelsize': 19, 'legend.fontsize': 22,
+})
+f2 = plt.figure(figsize=(11.0, 9.4))
+bx = f2.add_subplot(111, projection='3d')
+bx.plot_surface(A, B, E18, color=ORG, alpha=0.62, linewidth=0, antialiased=True,
+                rstride=2, cstride=2, shade=True)
+bx.plot_surface(A, B, E17, color=BLU, alpha=0.62, linewidth=0, antialiased=True,
+                rstride=2, cstride=2, shade=True)
+for E, cc in ((E17, BLU), (E18, ORG)):
+    bx.plot(a, np.full(N, 0.0), E[:, j], color=cc, lw=4.6, zorder=9)
+    bx.plot(np.full(N, 0.0), a, E[j, :], color=cc, lw=4.6, ls='--', zorder=9)
+bx.scatter([0], [0], [w0], s=190, c='k', depthshade=False, zorder=12)
+bx.text2D(0.44, 0.75, '$\\chi = +1$', transform=bx.transAxes,
+          fontsize=40, color='#c0392b', fontweight='bold', ha='right', va='center')
+bx.annotate('', xy=(0.512, 0.512), xytext=(0.452, 0.730), xycoords='axes fraction',
+            textcoords='axes fraction',
+            arrowprops=dict(arrowstyle='-', color='#444', lw=2.0))
+bx.set_xlabel('$\\Delta k_a$', labelpad=40)
+bx.set_ylabel('$\\Delta k_b$', labelpad=40)
+bx.zaxis.set_rotate_label(False)
+bx.set_zlabel('Frequency (THz)', labelpad=46, rotation=90)
+bx.view_init(elev=18, azim=-61)
+bx.set_box_aspect((1, 1, 0.78), zoom=1.02)
+bx.set_zlim(E17.min(), E18.max())
+bx.tick_params(labelsize=19, pad=3)
+bx.tick_params(axis='z', pad=16)
+bx.xaxis.set_major_locator(MaxNLocator(4))
+bx.yaxis.set_major_locator(MaxNLocator(4))
+bx.zaxis.set_major_locator(MaxNLocator(5))
+bx.legend(handles=[Line2D([], [], color=BLU, lw=6, label='band 17'),
+                   Line2D([], [], color=ORG, lw=6, label='band 18'),
+                   Line2D([], [], color='k', lw=3.2, ls='-', label='cut along $\\Delta k_a$'),
+                   Line2D([], [], color='k', lw=3.2, ls='--', label='cut along $\\Delta k_b$')],
+          loc='upper center', bbox_to_anchor=(0.5, -0.045), ncol=2,
+          frameon=False, fontsize=21)
+f2.subplots_adjust(left=0.0, right=0.92, bottom=0.14, top=1.02)
+f2.savefig('figs/fig5a_weyl_cone.png', dpi=300, bbox_inches='tight')
+print('fig5a (발표용, 3D 콘만) 저장')
