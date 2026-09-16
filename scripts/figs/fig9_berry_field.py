@@ -226,22 +226,26 @@ def uquiver(ax, A, B, u, v, lo=8, hi=99, floor=0.18, **kw):
 fig, ax = plt.subplots(figsize=(11.0, 7.6))
 st = 3
 A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
-U, V = Oa[::st, ::st].copy(), Ob[::st, ::st].copy()
-near = np.zeros(A.shape, bool)                 # 링이 덮는 자리는 격자를 뺀다
-for a0, b0, _ in NODES:
-    near |= np.hypot(A - a0, B - b0) < 0.006
-U[near] = 0.0; V[near] = 0.0
-uquiver(ax, A, B, U, V, scale=30, width=0.0022, zorder=2)
-uquiver(ax, rP[:, 0], rP[:, 1], rO[:, 0].copy(), rO[:, 1].copy(),
-        scale=30, width=0.0026, zorder=3, lo=2, hi=98, floor=0.35)
+uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
+        scale=30, width=0.0022, zorder=2)
 
-LBL = {0: (34, 14), 1: (34, -14), 2: (0, 30), 3: (0, -30)}
+# 노드마다 화살표 하나로 요약한다.  링을 촘촘히 그리면 극에 뭉쳐 읽히지
+# 않고, 어차피 근거리 장은 완전히 방사형이라 (배경 제거 후 r=0.0006 에서
+# 바깥/안쪽 100 %) 부호 하나로 정보가 다 담긴다.
+# 방향은 Γ 에서 멀어지는 쪽으로 통일했고, 라벨은 그 화살표 바깥에 둔다.
+AL0, AL1, LBL = 0.010, 0.034, 0.059            # 화살표 시작/끝, 라벨 거리
 for n, (a, bb, c) in enumerate(NODES):
-    ax.plot(a, bb, 'o', ms=14, color=RED if c > 0 else BLU,
-            mec='white', mew=1.5, zorder=7)
-    ax.annotate('$W_%d$' % (n + 1), xy=(a, bb), xytext=LBL[n],
-                textcoords='offset points', color='#111111', ha='center',
-                va='center', fontsize=17, fontweight='bold', zorder=8)
+    u = np.array([a, bb]) / np.hypot(a, bb)
+    col = RED if c > 0 else BLU
+    tail, head = (u * AL0, u * AL1) if c > 0 else (u * AL1, u * AL0)
+    ax.annotate('', xy=(a + head[0], bb + head[1]),
+                xytext=(a + tail[0], bb + tail[1]), zorder=9,
+                arrowprops=dict(arrowstyle='-|>,head_width=0.30,head_length=0.55',
+                                color=col, lw=3.4, shrinkA=0, shrinkB=0))
+    ax.plot(a, bb, 'o', ms=15, color=col, mec='white', mew=1.6, zorder=10)
+    ax.annotate('$W_%d$' % (n + 1), xy=(a + u[0] * LBL, bb + u[1] * LBL),
+                color='#111111', ha='center', va='center', fontsize=17,
+                fontweight='bold', zorder=10)
 
 # 확대 인셋 — 노드가 없는 가운데 세로 띠에 두고 연결선으로 잇는다
 for (a, bb, c), xa, xb, ua, ub, loc in zip(
