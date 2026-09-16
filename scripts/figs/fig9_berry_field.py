@@ -164,19 +164,31 @@ RED, BLU = '#d62728', '#1f77b4'
 ARROW = '#3b8fd4'
 
 
-def uquiver(ax, A, B, u, v, **kw):
-    """방향만 보이는 균일 길이 화살표."""
-    m = np.hypot(u, v); m[m == 0] = 1.0
-    ax.quiver(A, B, u / m, v / m, color=ARROW, angles='xy',
-              scale_units='width', headwidth=4.2, headlength=4.6,
-              headaxislength=4.0, **kw)
+def uquiver(ax, A, B, u, v, lo=8, hi=99, floor=0.18, **kw):
+    """길이를 log|Ω| 로 압축해 넣은 화살표.
+
+    |Ω| 는 노드에서 1/r² 로 발산하고 먼 곳에서는 거의 0 이라 선형 길이로는
+    쓸 수 없다.  log 를 백분위로 정규화해 [floor, 1] 로 눌러 넣는다.
+    꼬리를 길게 보이도록 머리를 작게 잡았다.
+    """
+    m = np.hypot(u, v)
+    good = m > 0
+    L = np.full_like(m, floor)
+    if good.any():
+        lg = np.log10(m[good])
+        a, b = np.percentile(lg, [lo, hi])
+        L[good] = np.clip((lg - a) / max(b - a, 1e-12), 0.0, 1.0) * (1 - floor) + floor
+    mm = np.where(good, m, 1.0)
+    ax.quiver(A, B, u / mm * L, v / mm * L, color=ARROW, angles='xy',
+              scale_units='width', headwidth=2.9, headlength=3.0,
+              headaxislength=2.6, **kw)
 
 
 fig, ax = plt.subplots(figsize=(11.0, 7.6))
 st = 3
 A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
 uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
-        scale=42, width=0.0023, zorder=2)
+        scale=30, width=0.0022, zorder=2)
 
 LBL = {0: (34, 14), 1: (34, -14), 2: (0, 30), 3: (0, -30)}
 for n, (a, bb, c) in enumerate(NODES):
@@ -189,13 +201,14 @@ for n, (a, bb, c) in enumerate(NODES):
 # 확대 인셋 — 노드가 없는 가운데 세로 띠에 두고 연결선으로 잇는다
 for (a, bb, c), xa, xb, ua, ub, loc in zip(
         INS, lka, lkb, lOa, lOb,
-        ([0.345, 0.560, 0.310, 0.385], [0.345, 0.055, 0.310, 0.385])):
+        ([0.385, 0.605, 0.225, 0.285], [0.385, 0.090, 0.225, 0.285])):
     axi = ax.inset_axes(loc, zorder=12)
     axi.set_facecolor('white')
     axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
-    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=19, width=0.0095)
-    axi.plot(a, bb, 'o', ms=21, color=RED if c > 0 else BLU,
+    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=13, width=0.0085,
+            lo=5, hi=95, floor=0.30)
+    axi.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
     axi.set_xticks([]); axi.set_yticks([])
