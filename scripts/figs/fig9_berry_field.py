@@ -106,7 +106,7 @@ class Berry:
 
 
 RINGS = 'figs/berry_rings_pp.npz'
-RADII = (0.0006, 0.0035)                      # reduced
+RADII = (0.0006, 0.0025)                      # reduced
 NANG = 8
 
 CACHE = 'figs/berry_plane_pp.npz'
@@ -140,6 +140,9 @@ def local_field(src, nodes, r=0.0006, n=11, h=4e-5):
         xa = np.linspace(a0 - r, a0 + r, n)
         xb = np.linspace(b0 - r, b0 + r, n)
         P = np.array([[x * b.n[0], y * b.n[1], 0.0] for x in xa for y in xb])
+        # ⚠️ 인셋 패치는 monopole 영역 *안* 이라 패치 평균이 배경이 아니다.
+        # 빼면 monopole 자체를 깎아 균일장처럼 만들어 버린다.  여기서는 안 뺀다.
+        # (링은 원 둘레 평균이 정확히 배경이므로 거기서만 뺀다.)
         O = b.omega([0.0, 0.0, 0.0], P, h, comps=(0, 1))
         KA.append(xa); KB.append(xb)
         OA.append(O[:, 0].reshape(n, n)); OB.append(O[:, 1].reshape(n, n))
@@ -177,6 +180,10 @@ def ring_field(src, nodes):
                       np.zeros(NANG)]
             o = b.omega([a0, b0, 0.0], d, min(4e-5, r * b.n[0] * 0.12),
                         comps=(0, 1))
+            # 국소 배경 제거.  monopole 성분은 원 둘레 평균이 정확히 0 이므로
+            # 링 평균이 곧 배경이다.  빼고 나면 r=0.0006 에서 화살표가 100 %
+            # 바깥(또는 안)을 향한다 (빼기 전 79 %).
+            o[:, :2] -= o[:, :2].mean(0)
             P.append(np.c_[a0 + r * np.cos(th), b0 + r * np.sin(th)])
             O.append(o[:, :2])
     P, O = np.vstack(P), np.vstack(O)
