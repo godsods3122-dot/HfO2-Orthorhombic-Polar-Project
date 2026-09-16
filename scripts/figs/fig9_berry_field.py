@@ -105,6 +105,10 @@ class Berry:
         return tot / (2 * np.pi)
 
 
+RINGS = 'figs/berry_rings_pp.npz'
+RADII = (0.0008, 0.0019, 0.0042, 0.0080)      # reduced
+NANG = 12
+
 CACHE = 'figs/berry_plane_pp.npz'
 
 
@@ -125,7 +129,7 @@ def field(src, na=131, nb=81, h=3e-4):
 LOCAL = 'figs/berry_local_pp.npz'
 
 
-def local_field(src, nodes, r=0.0006, n=15, h=4e-5):
+def local_field(src, nodes, r=0.0006, n=11, h=4e-5):
     """인셋용 — 노드 주변 조밀 격자 (reduced 반경 r)."""
     if os.path.exists(LOCAL):
         z = np.load(LOCAL)
@@ -154,7 +158,35 @@ def local_field(src, nodes, r=0.0006, n=15, h=4e-5):
 # 독립적으로 확인한다.  전체 부호만 Simphony 에 맞춰 뒤집는다.
 SIGN = -1.0
 
+def ring_field(src, nodes):
+    """노드마다 로그 간격 링 위의 Ω.
+
+    주 격자 간격은 0.004 인데 monopole 영역은 반경 0.0008 이라 격자점이 그
+    안에 하나도 안 들어간다.  그래서 큰 그림에서는 노드가 안장점처럼 보인다.
+    링을 따로 계산해 얹으면 노드 바로 옆의 방사형 구조가 드러난다.
+    """
+    if os.path.exists(RINGS):
+        z = np.load(RINGS)
+        return z['P'], z['O']
+    b = Berry(src)
+    P, O = [], []
+    th = np.linspace(0, 2 * np.pi, NANG, endpoint=False)
+    for a0, b0, _ in nodes:
+        for r in RADII:
+            d = np.c_[r * np.cos(th) * b.n[0], r * np.sin(th) * b.n[1],
+                      np.zeros(NANG)]
+            o = b.omega([a0, b0, 0.0], d, min(4e-5, r * b.n[0] * 0.12),
+                        comps=(0, 1))
+            P.append(np.c_[a0 + r * np.cos(th), b0 + r * np.sin(th)])
+            O.append(o[:, :2])
+    P, O = np.vstack(P), np.vstack(O)
+    np.savez(RINGS, P=P, O=O)
+    return P, O
+
+
 ka, kb, Oa, Ob = field('source/parent_pristine')
+rP, rO = ring_field('source/parent_pristine', NODES)
+rO = SIGN * rO
 Oa, Ob = SIGN * Oa, SIGN * Ob
 INS = [NODES[0], NODES[1]]                      # χ=+1 하나, χ=−1 하나
 lka, lkb, lOa, lOb = local_field('source/parent_pristine', INS)
@@ -180,15 +212,21 @@ def uquiver(ax, A, B, u, v, lo=8, hi=99, floor=0.18, **kw):
         L[good] = np.clip((lg - a) / max(b - a, 1e-12), 0.0, 1.0) * (1 - floor) + floor
     mm = np.where(good, m, 1.0)
     ax.quiver(A, B, u / mm * L, v / mm * L, color=ARROW, angles='xy',
-              scale_units='width', headwidth=2.9, headlength=3.0,
-              headaxislength=2.6, **kw)
+              scale_units='width', headwidth=4.0, headlength=4.0,
+              headaxislength=3.4, **kw)
 
 
 fig, ax = plt.subplots(figsize=(11.0, 7.6))
 st = 3
 A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
-uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
-        scale=30, width=0.0022, zorder=2)
+U, V = Oa[::st, ::st].copy(), Ob[::st, ::st].copy()
+near = np.zeros(A.shape, bool)                 # 링이 덮는 자리는 격자를 뺀다
+for a0, b0, _ in NODES:
+    near |= np.hypot(A - a0, B - b0) < 0.011
+U[near] = 0.0; V[near] = 0.0
+uquiver(ax, A, B, U, V, scale=30, width=0.0022, zorder=2)
+uquiver(ax, rP[:, 0], rP[:, 1], rO[:, 0].copy(), rO[:, 1].copy(),
+        scale=30, width=0.0026, zorder=3, lo=2, hi=98, floor=0.35)
 
 LBL = {0: (34, 14), 1: (34, -14), 2: (0, 30), 3: (0, -30)}
 for n, (a, bb, c) in enumerate(NODES):
@@ -207,7 +245,7 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
     uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=13, width=0.0085,
-            lo=5, hi=95, floor=0.30)
+            lo=5, hi=95, floor=0.48)
     axi.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
