@@ -115,7 +115,7 @@ LOCAL = 'figs/berry_local_wide.npz'
 # 인셋 반경.  monopole 이 순수한 영역(r<=0.0004)만 보여주면 "왜 밖에서는 안
 # 그러냐" 는 오해를 준다.  화살표가 뒤집히기 시작하는 구간(r~0.001 에서 배경과
 # 크기가 같아진다)까지 포함시킨다.
-INS_R = 0.0012
+INS_R = 0.0007
 
 
 def field(src, n=21, h=3e-4):
@@ -132,7 +132,7 @@ def field(src, n=21, h=3e-4):
     return ka, kb, Oa, Ob
 
 
-def local_field(src, nodes, r=INS_R, n=7, h=8e-5):
+def local_field(src, nodes, r=INS_R, n=7, h=4e-5):
     """인셋용 — 노드 주변 조밀 격자.  r <= 0.0004 라야 순수 monopole 이다."""
     if os.path.exists(LOCAL):
         z = np.load(LOCAL)
