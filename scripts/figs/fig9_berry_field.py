@@ -203,12 +203,15 @@ RED, BLU = '#d62728', '#1f77b4'
 ARROW = '#3b8fd4'
 
 
-def uquiver(ax, A, B, u, v, lo=8, hi=99, floor=0.18, **kw):
-    """길이를 log|Ω| 로 압축해 넣은 화살표.
+QKW = dict(color=ARROW, angles='xy', scale_units='width',
+           headwidth=4.0, headlength=4.0, headaxislength=3.4)
+
+
+def scaled(u, v, lo=8, hi=99, floor=0.18):
+    """길이를 log|Ω| 로 압축한 화살표 성분.
 
     |Ω| 는 노드에서 1/r² 로 발산하고 먼 곳에서는 거의 0 이라 선형 길이로는
     쓸 수 없다.  log 를 백분위로 정규화해 [floor, 1] 로 눌러 넣는다.
-    꼬리를 길게 보이도록 머리를 작게 잡았다.
     """
     m = np.hypot(u, v)
     good = m > 0
@@ -218,33 +221,50 @@ def uquiver(ax, A, B, u, v, lo=8, hi=99, floor=0.18, **kw):
         a, b = np.percentile(lg, [lo, hi])
         L[good] = np.clip((lg - a) / max(b - a, 1e-12), 0.0, 1.0) * (1 - floor) + floor
     mm = np.where(good, m, 1.0)
-    ax.quiver(A, B, u / mm * L, v / mm * L, color=ARROW, angles='xy',
-              scale_units='width', headwidth=4.0, headlength=4.0,
-              headaxislength=3.4, **kw)
+    return u / mm * L, v / mm * L
 
 
 fig, ax = plt.subplots(figsize=(11.0, 7.6))
 st = 3
 A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
-uquiver(ax, A, B, Oa[::st, ::st].copy(), Ob[::st, ::st].copy(),
-        scale=30, width=0.0022, zorder=2)
+SCALE, WIDTH = 30, 0.0022
+GX, GY = A.ravel(), B.ravel()
+GU, GV = (c.ravel() for c in scaled(Oa[::st, ::st].copy(), Ob[::st, ::st].copy()))
+
+# 노드 화살표.  격자와 같은 quiver 에 넣어야 규격이 완전히 같아진다.
+# quiver 길이 = 성분 / SCALE × 축 가로폭 이므로, 성분 1.0 이 격자 최대 길이다.
+ALEN = (ka[-1] - ka[0]) / SCALE
+AL0 = 0.009                                    # 노드에서 화살표 시작까지
+NX, NY, NU, NV = [], [], [], []
+for a, bb, c in NODES:
+    u = np.array([a, bb]) / np.hypot(a, bb)    # Γ 에서 멀어지는 방향
+    base = np.array([a, bb]) + u * (AL0 if c > 0 else AL0 + ALEN)
+    NX.append(base[0]); NY.append(base[1])
+    NU.append(u[0] * (1 if c > 0 else -1)); NV.append(u[1] * (1 if c > 0 else -1))
+NX, NY, NU, NV = map(np.asarray, (NX, NY, NU, NV))
+
+# 노드 화살표와 겹치는 격자 화살표는 뺀다 (선분 표본 사이 최소거리로 판정).
+# 데이터 단위는 x,y 축척이 달라 인치로 환산해 시각적 거리로 잰다.
+IX, IY = (ka[-1] - ka[0]) / 11.0, (kb[-1] - kb[0]) / 7.6
+t = np.linspace(0, 1, 6)[:, None]
+G = np.stack([GX + GU * ALEN * t, GY + GV * ALEN * t], -1).transpose(1, 0, 2)
+N = np.stack([NX + NU * ALEN * t, NY + NV * ALEN * t], -1).reshape(-1, 2)
+d = np.hypot((G[:, :, None, 0] - N[None, None, :, 0]) / IX,
+             (G[:, :, None, 1] - N[None, None, :, 1]) / IY)
+keep = d.min(axis=(1, 2)) > 0.085              # 0.085 inch ≈ 6 pt
+ax.quiver(GX[keep], GY[keep], GU[keep], GV[keep],
+          scale=SCALE, width=WIDTH, zorder=2, **QKW)
+ax.quiver(NX, NY, NU, NV, scale=SCALE, width=WIDTH, zorder=9, **QKW)
 
 # 노드마다 화살표 하나로 요약한다.  링을 촘촘히 그리면 극에 뭉쳐 읽히지
 # 않고, 어차피 근거리 장은 완전히 방사형이라 (배경 제거 후 r=0.0006 에서
 # 바깥/안쪽 100 %) 부호 하나로 정보가 다 담긴다.
 # 방향은 Γ 에서 멀어지는 쪽으로 통일했고, 라벨은 그 화살표 바깥에 둔다.
-AL0, AL1, LBL = 0.008, 0.025, 0.050            # 화살표 시작/끝, 라벨 거리
+LBL = 0.050
 for n, (a, bb, c) in enumerate(NODES):
     u = np.array([a, bb]) / np.hypot(a, bb)
-    col = RED if c > 0 else BLU
-    # 장의 다른 화살표와 똑같이 보이게 한다 (색·굵기·머리 크기·길이 모두 맞춤).
-    # 부호는 노드 점 색과 화살표가 들어가느냐/나가느냐로만 읽는다.
-    tail, head = (u * AL0, u * AL1) if c > 0 else (u * AL1, u * AL0)
-    ax.annotate('', xy=(a + head[0], bb + head[1]),
-                xytext=(a + tail[0], bb + tail[1]), zorder=9,
-                arrowprops=dict(arrowstyle='-|>', color=ARROW, lw=1.3,
-                                mutation_scale=15, shrinkA=0, shrinkB=0))
-    ax.plot(a, bb, 'o', ms=15, color=col, mec='white', mew=1.6, zorder=10)
+    ax.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
+            mec='white', mew=1.6, zorder=10)
     ax.annotate('$W_%d$' % (n + 1), xy=(a + u[0] * LBL, bb + u[1] * LBL),
                 color='#111111', ha='center', va='center', fontsize=17,
                 fontweight='bold', zorder=10)
@@ -257,8 +277,8 @@ for (a, bb, c), xa, xb, ua, ub, loc in zip(
     axi.set_facecolor('white')
     axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
-    uquiver(axi, A2, B2, ua.copy(), ub.copy(), scale=13, width=0.0085,
-            lo=5, hi=95, floor=0.48)
+    su, sv = scaled(ua.copy(), ub.copy(), lo=5, hi=95, floor=0.48)
+    axi.quiver(A2, B2, su, sv, scale=13, width=0.0085, **QKW)
     axi.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
