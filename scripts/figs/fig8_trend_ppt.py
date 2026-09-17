@@ -6,6 +6,18 @@ chirality 는 레포/Simphony 규약. 거울이 χ 를 뒤집으므로 1·3 사�
 2·4 사분면이 반대 부호다.
 
 출력: figs/fig8_trend_ppt.png
+
+⚠️ chirality 부호 — **parent 기준으로 표기**한다.
+계산은 미러 구조로 했고 (Simphony WeylChirality_calc, runs/<src>/band17/PN.out),
+미러와 parent 는 det = −1 (improper) 변환으로 연결되므로 chirality 가 뒤집힌다.
+따라서 미러 계산값의 부호를 반전해 적는다.
+
+  구조              native (k1,k2,k3)          Simphony(미러)   표기(parent)
+  pristine_mirror   (0.09752, 0, 0.16103)          −1              +1
+  m1_mirror         (0.06377, 0, 0.12942)          −1              +1
+  p1_mirror         (0.26434, 0, 0.31821)          +1              −1
+
+색 규약: 양수 빨강 / 음수 파랑.
 """
 import sys, os
 import numpy as np
@@ -15,10 +27,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
-# (라벨, (k_a, k_b), 1사분면 χ, 마커)
-PTS = [('$-0.8$ %',   (0.1294182, 0.0637717), -1, 'o'),
-       ('unstrained', (0.1610282, 0.0975234), -1, 'D'),
-       ('$+1$ %',     (0.3182116, 0.2643381), +1, 's')]
+# (라벨, (k_a, k_b), 1사분면 χ, 마커)  — parent 기준 (미러 계산값 반전)
+PTS = [('$-0.8$ %',   (0.1294182, 0.0637717), +1, 'o'),
+       ('unstrained', (0.1610282, 0.0975234), +1, 'D'),
+       ('$+1$ %',     (0.3182116, 0.2643381), -1, 's')]
 POS, NEG, GREY = '#c0392b', '#1f5fd0', '#888888'
 
 plt.rcParams.update({

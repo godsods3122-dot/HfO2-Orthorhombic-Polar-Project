@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """발표용 — −0.8 % / 무변형 / +1 % 밴드 중첩. 미러 배치 세 점만.
 
-compressive 빨강, tensile 파랑, 무변형 회색. 전부 반투명.
+압축(−) 파랑, 인장(+) 빨강, 무변형 회색. 전부 반투명.
 x 축은 세 구조가 같은 환산 경로를 쓰므로 무변형 구조의 경로 길이로 통일한다.
 안쪽 Γ 는 LO-TO 방향 의존 불연속이라 구조마다 NaN 으로 끊는다.
 
 출력: figs/fig_overlay_ppt.png  (데이터 캐시: figs/overlay_bands.npz)
+
+색 규약: **양수 빨강 / 음수 파랑**. 여기서는 strain 부호에 적용한다 —
+인장(+) 빨강, 압축(−) 파랑. 추이 그림(fig8_trend_ppt.py)의 chirality 색도 같은 규칙이다.
 """
 import sys, os
 import numpy as np
@@ -18,9 +21,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 NK = 120
-CASES = [('$-0.8$ %  compressive', 'm1_mirror',       '#c0392b'),
+CASES = [('$-0.8$ %  compressive', 'm1_mirror',       '#1f5fd0'),
          ('unstrained',            'pristine_mirror', '#4a4a4a'),
-         ('$+1$ %  tensile',       'p1_mirror',       '#1f5fd0')]
+         ('$+1$ %  tensile',       'p1_mirror',       '#c0392b')]
 CACHE = 'figs/overlay_bands.npz'
 
 if not os.path.exists(CACHE):

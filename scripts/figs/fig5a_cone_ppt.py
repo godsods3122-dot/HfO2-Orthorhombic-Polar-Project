@@ -3,6 +3,18 @@
 
 데이터는 gen_m1_data.py 의 figs/m1_figdata.npz (phonopy 직접 계산).
 parent_pristine 판본(fig5_cone.py)과 달리 미러 계열이다.
+
+⚠️ chirality 부호 — **parent 기준으로 표기**한다.
+계산은 미러 구조로 했고 (Simphony WeylChirality_calc, runs/<src>/band17/PN.out),
+미러와 parent 는 det = −1 (improper) 변환으로 연결되므로 chirality 가 뒤집힌다.
+따라서 미러 계산값의 부호를 반전해 적는다.
+
+  구조              native (k1,k2,k3)          Simphony(미러)   표기(parent)
+  pristine_mirror   (0.09752, 0, 0.16103)          −1              +1
+  m1_mirror         (0.06377, 0, 0.12942)          −1              +1
+  p1_mirror         (0.26434, 0, 0.31821)          +1              −1
+
+색 규약: 양수 빨강 / 음수 파랑.
 """
 import sys, os
 import numpy as np
@@ -13,7 +25,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from matplotlib.lines import Line2D
 
-CHI = '-1'                      # 레포/Simphony 규약
+CHI = '+1'                      # (+,+) 노드, parent 기준 (미러 −1 의 반전)
 BLU, ORG, RED = '#2b6cb0', '#dd6b20', '#c0392b'
 
 d = np.load('figs/m1_figdata.npz', allow_pickle=True)

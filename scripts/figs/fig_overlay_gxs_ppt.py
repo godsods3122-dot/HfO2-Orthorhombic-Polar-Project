@@ -4,8 +4,11 @@
 fig_overlay_ppt.py 와 같은 내용이지만 구간당 400점으로 다시 계산한다
 (전 경로판은 120점). 이 구간에는 안쪽 Γ 가 없으므로 끊을 필요도 없다.
 
-compressive 빨강 / 무변형 회색 / tensile 파랑, 전부 반투명.
+압축(−) 파랑 / 무변형 회색 / 인장(+) 빨강, 전부 반투명.
 출력: figs/fig_overlay_gxs_ppt.png  (캐시 figs/overlay_gxs.npz)
+
+색 규약: **양수 빨강 / 음수 파랑**. 여기서는 strain 부호에 적용한다 —
+인장(+) 빨강, 압축(−) 파랑. 추이 그림(fig8_trend_ppt.py)의 chirality 색도 같은 규칙이다.
 """
 import sys, os
 import numpy as np
@@ -20,9 +23,9 @@ from matplotlib.lines import Line2D
 NK = 400
 SEGS = [('G', 'X'), ('X', 'S')]
 LAB = ['Γ', 'X', 'S']
-CASES = [('$-0.8$ %  compressive', 'm1_mirror',       '#c0392b'),
+CASES = [('$-0.8$ %  compressive', 'm1_mirror',       '#1f5fd0'),
          ('unstrained',            'pristine_mirror', '#4a4a4a'),
-         ('$+1$ %  tensile',       'p1_mirror',       '#1f5fd0')]
+         ('$+1$ %  tensile',       'p1_mirror',       '#c0392b')]
 CACHE = 'figs/overlay_gxs.npz'
 
 if not os.path.exists(CACHE):
