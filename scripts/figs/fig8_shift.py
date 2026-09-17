@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Fig 8: −1 % → +1 % biaxial 에서 바일 4점 위치 추이. 기준은 −1 % 구조.
+"""Fig 8: 압축 → 인장 biaxial 에서 바일 4점 위치 추이.
+
+⚠️ 라벨 주의 — 디렉토리 이름의 공칭값과 실제 변형률이 다르다. 역할 기준
+(a = 긴 거울축, b = 짧은 거울축, c = 편극축) 실측값은 이렇다:
+
+  m1_mirror      εa −0.687 %  εb −0.844 %  εc +0.514 %   ← 실제로는 −0.8 %
+  pristine_mirror  0            0            0
+  p1_mirror      εa +1.320 %  εb +1.159 %  εc −0.754 %
+  parent_m1_old  εa −1.079 %  εb −0.911 %  εc +0.740 %   ← 이쪽이 진짜 −1 %
+
+그래서 이 그림은 **−0.8 % → 0 → +1.2 %** 다. 진짜 −1 % (parent_m1_old) 에서는
+polar=0 평면의 4점 궤도가 **이미 소멸했다** (201×201 스캔, 거울선 밖 국소최소
+2개뿐이고 gap 7.9e-03 / 8.7e-03 — 노드보다 네 자리 크다).
 
 좌표는 표준 (a, b, c) — 편극축 = c. pristine/m1/p1 세 구조 모두 축 규약이 같아
 (role2native = [2,0,1], polar = native 1) 같은 평면에 그대로 겹쳐 그릴 수 있다.
@@ -50,9 +62,12 @@ ax.set_title('(a)  Weyl quartet in the $k_c$ = 0 plane', fontsize=15, pad=14)
 ax.grid(alpha=0.18, lw=0.7)
 ax.set_aspect('equal')
 ax.legend(handles=[
-    Line2D([], [], marker='o', ls='', ms=12, color=C_M1, mec='k', label='$-1$ %  (reference)'),
-    Line2D([], [], marker='o', ls='', ms=9, color='white', mec=C_PRI, mew=2.0, label='unstrained'),
-    Line2D([], [], marker='s', ls='', ms=11, color=C_P1, mec='k', label='$+1$ %')],
+    Line2D([], [], marker='o', ls='', ms=12, color=C_M1, mec='k',
+           label='compressive  $-0.84/-0.69$ %'),
+    Line2D([], [], marker='o', ls='', ms=9, color='white', mec=C_PRI, mew=2.0,
+           label='unstrained'),
+    Line2D([], [], marker='s', ls='', ms=11, color=C_P1, mec='k',
+           label='tensile  $+1.16/+1.32$ %')],
     loc='upper center', bbox_to_anchor=(0.5, -0.13), ncol=3,
     frameon=False, handletextpad=0.4, columnspacing=1.6)
 
@@ -63,13 +78,13 @@ bx.annotate('', xy=P1, xytext=M1,
 bx.plot(*M1, 'o', ms=17, color=C_M1, mec='k', mew=1.2, zorder=5)
 bx.plot(*PRI, 'o', ms=12, color='white', mec=C_PRI, mew=2.4, zorder=5)
 bx.plot(*P1, 's', ms=15, color=C_P1, mec='k', mew=1.2, zorder=5)
-bx.annotate('$-1$ %%\n(%.5f, %.5f)\n%.3f THz' % (M1 + (E['m1'],)), xy=M1,
+bx.annotate('$-0.84/-0.69$ %%\n(%.5f, %.5f)\n%.3f THz' % (M1 + (E['m1'],)), xy=M1,
             xytext=(16, -4), textcoords='offset points', ha='left', va='top',
             fontsize=12.5, color=C_M1)
 bx.annotate('unstrained\n(%.5f, %.5f)\n%.3f THz' % (PRI + (E['pri'],)), xy=PRI,
             xytext=(16, -4), textcoords='offset points', ha='left', va='top',
             fontsize=12, color='#5a5a5a')
-bx.annotate('$+1$ %%\n(%.5f, %.5f)\n%.3f THz' % (P1 + (E['p1'],)), xy=P1,
+bx.annotate('$+1.16/+1.32$ %%\n(%.5f, %.5f)\n%.3f THz' % (P1 + (E['p1'],)), xy=P1,
             xytext=(-22, -14), textcoords='offset points', ha='right', va='top',
             fontsize=12.5, color=C_P1)
 bx.text(0.975, 0.055,
@@ -81,7 +96,7 @@ bx.set_xlabel('$k_a$  (reduced)'); bx.set_ylabel('$k_b$  (reduced)')
 bx.set_title('(b)  first quadrant, magnified', fontsize=15, pad=14)
 bx.grid(alpha=0.25, lw=0.7)
 
-fig.suptitle('Weyl position from $-1$ % to $+1$ % biaxial strain  (reference: $-1$ %)',
+fig.suptitle('Weyl position under biaxial strain  (mirror-axis strains, not the nominal labels)',
              y=0.99, fontsize=15.5)
 fig.savefig('figs/fig8_weyl_shift.png')
 plt.close(fig)

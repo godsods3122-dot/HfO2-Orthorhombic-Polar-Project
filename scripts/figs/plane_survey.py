@@ -31,7 +31,8 @@ def flux(ph, rec, center, r, nth=36, nph=72, nocc=17):
                  (L(Vp[1:,:-1],Vp[1:,1:]) * L(Vp[:-1,:-1],Vp[1:,:-1])))
     return F.sum()/(2*np.pi)
 
-for src in ('pristine_mirror', 'm1_mirror', 'p1_mirror'):
+SRCS = sys.argv[1:] or ['pristine_mirror', 'm1_mirror', 'p1_mirror']
+for src in SRCS:
     D = '/home/user/HfO2-Orthorhombic-Polar-Project/source/' + src
     r2n, pol, mir = roles(D)
     ph = get_ph(D)
