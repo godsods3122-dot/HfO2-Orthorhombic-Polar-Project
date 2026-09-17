@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
 # (라벨, (k_a, k_b), 1사분면 χ, 마커)
-PTS = [('$-0.84$ %',  (0.1294182, 0.0637717), -1, 'o'),
+PTS = [('$-0.8$ %',   (0.1294182, 0.0637717), -1, 'o'),
        ('unstrained', (0.1610282, 0.0975234), -1, 'D'),
-       ('$+1.16$ %',  (0.3182116, 0.2643381), +1, 's')]
+       ('$+1$ %',     (0.3182116, 0.2643381), +1, 's')]
 POS, NEG, GREY = '#c0392b', '#1f5fd0', '#888888'
 
 plt.rcParams.update({
@@ -39,10 +39,8 @@ ax.axvline(0, color=GREY, lw=2.0, ls='--', zorder=1)
 for sx in (1, -1):
     for sy in (1, -1):
         p = [(sx * a, sy * b) for _, (a, b), _, _ in PTS]
-        for q, r in zip(p[:-1], p[1:]):
-            ax.annotate('', xy=r, xytext=q,
-                        arrowprops=dict(arrowstyle='-|>', color='#3a3a3a', lw=2.6,
-                                        shrinkA=15, shrinkB=15, alpha=0.8), zorder=2)
+        px, py = zip(*p)
+        ax.plot(px, py, ls=':', color='#3a3a3a', lw=3.0, alpha=0.85, zorder=2)
         for (lab, (a, b), chi, m) in PTS:
             c = POS if chi * sx * sy > 0 else NEG
             ax.plot(sx * a, sy * b, m, ms=24, color=c, mec='k', mew=1.6, zorder=5)
