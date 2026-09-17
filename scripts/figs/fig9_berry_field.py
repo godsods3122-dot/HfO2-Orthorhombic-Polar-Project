@@ -109,28 +109,31 @@ RINGS = 'figs/berry_rings_pp.npz'
 RADII = (0.0006, 0.0025)                      # reduced
 NANG = 8
 
-CACHE = 'figs/berry_plane_pp.npz'
+CACHE = 'figs/berry_plane_sq.npz'
+KMAX = 0.26                                   # 정사각 창
+LOCAL = 'figs/berry_local_wide.npz'
+# 인셋 반경.  monopole 이 순수한 영역(r<=0.0004)만 보여주면 "왜 밖에서는 안
+# 그러냐" 는 오해를 준다.  화살표가 뒤집히기 시작하는 구간(r~0.001 에서 배경과
+# 크기가 같아진다)까지 포함시킨다.
+INS_R = 0.0007
 
 
-def field(src, na=131, nb=81, h=3e-4):
+def field(src, n=21, h=3e-4):
+    """정사각 창의 성긴 격자.  그리는 해상도 그대로 계산한다."""
     if os.path.exists(CACHE):
         z = np.load(CACHE)
         return z['ka'], z['kb'], z['Oa'], z['Ob']
     b = Berry(src)
-    ka = np.linspace(-0.26, 0.26, na)
-    kb = np.linspace(-0.16, 0.16, nb)
+    ka = kb = np.linspace(-KMAX, KMAX, n)
     P = np.array([[x * b.n[0], y * b.n[1], 0.0] for x in ka for y in kb])
     O = b.omega([0.0, 0.0, 0.0], P, h, comps=(0, 1))   # Ω_c 는 대칭으로 0
-    Oa, Ob = O[:, 0].reshape(na, nb), O[:, 1].reshape(na, nb)
+    Oa, Ob = O[:, 0].reshape(n, n), O[:, 1].reshape(n, n)
     np.savez(CACHE, ka=ka, kb=kb, Oa=Oa, Ob=Ob)
     return ka, kb, Oa, Ob
 
 
-LOCAL = 'figs/berry_local_pp.npz'
-
-
-def local_field(src, nodes, r=0.0006, n=11, h=4e-5):
-    """인셋용 — 노드 주변 조밀 격자 (reduced 반경 r)."""
+def local_field(src, nodes, r=INS_R, n=7, h=4e-5):
+    """인셋용 — 노드 주변 조밀 격자.  r <= 0.0004 라야 순수 monopole 이다."""
     if os.path.exists(LOCAL):
         z = np.load(LOCAL)
         return z['ka'], z['kb'], z['Oa'], z['Ob']
@@ -142,7 +145,6 @@ def local_field(src, nodes, r=0.0006, n=11, h=4e-5):
         P = np.array([[x * b.n[0], y * b.n[1], 0.0] for x in xa for y in xb])
         # ⚠️ 인셋 패치는 monopole 영역 *안* 이라 패치 평균이 배경이 아니다.
         # 빼면 monopole 자체를 깎아 균일장처럼 만들어 버린다.  여기서는 안 뺀다.
-        # (링은 원 둘레 평균이 정확히 배경이므로 거기서만 뺀다.)
         O = b.omega([0.0, 0.0, 0.0], P, h, comps=(0, 1))
         KA.append(xa); KB.append(xb)
         OA.append(O[:, 0].reshape(n, n)); OB.append(O[:, 1].reshape(n, n))
@@ -151,22 +153,11 @@ def local_field(src, nodes, r=0.0006, n=11, h=4e-5):
     return np.array(KA), np.array(KB), np.array(OA), np.array(OB)
 
 
-# 부호 규약.  이 FHS 구현의 Ω 부호는 Simphony 의 χ 와 전체적으로 반대다
-# (프로젝트 노트의 "up to a global sign" 그대로).  근거리 측정:
-#   (+a,+b) <cos>=-1.0000  vs Simphony χ=+1
-#   (+a,-b) <cos>=+1.0000  vs Simphony χ=-1
-#   (-a,+b) <cos>=+1.0000  vs Simphony χ=-1
-#   (-a,-b) <cos>=-1.0000  vs Simphony χ=+1
-# 교대 패턴은 완벽히 일치하므로 어느 노드가 source/sink 인지는 이 계산이
-# 독립적으로 확인한다.  전체 부호만 Simphony 에 맞춰 뒤집는다.
-SIGN = -1.0
-
 def ring_field(src, nodes):
-    """노드마다 로그 간격 링 위의 Ω.
+    """노드마다 로그 간격 링 위의 Ω (링평균 = 국소 배경을 뺀 값).
 
-    주 격자 간격은 0.004 인데 monopole 영역은 반경 0.0008 이라 격자점이 그
-    안에 하나도 안 들어간다.  그래서 큰 그림에서는 노드가 안장점처럼 보인다.
-    링을 따로 계산해 얹으면 노드 바로 옆의 방사형 구조가 드러난다.
+    격자는 monopole 영역(r<=0.0008)을 표본조차 못 하므로 따로 계산한다.
+    monopole 성분은 원 둘레 평균이 정확히 0 이라 링 평균이 곧 배경이다.
     """
     if os.path.exists(RINGS):
         z = np.load(RINGS)
@@ -180,9 +171,6 @@ def ring_field(src, nodes):
                       np.zeros(NANG)]
             o = b.omega([a0, b0, 0.0], d, min(4e-5, r * b.n[0] * 0.12),
                         comps=(0, 1))
-            # 국소 배경 제거.  monopole 성분은 원 둘레 평균이 정확히 0 이므로
-            # 링 평균이 곧 배경이다.  빼고 나면 r=0.0006 에서 화살표가 100 %
-            # 바깥(또는 안)을 향한다 (빼기 전 79 %).
             o[:, :2] -= o[:, :2].mean(0)
             P.append(np.c_[a0 + r * np.cos(th), b0 + r * np.sin(th)])
             O.append(o[:, :2])
@@ -191,23 +179,23 @@ def ring_field(src, nodes):
     return P, O
 
 
+# 부호 규약.  이 FHS 구현의 Ω 부호는 Simphony 의 χ 와 전체적으로 반대다
+# (프로젝트 노트의 "up to a global sign" 그대로).  교대 패턴은 완벽히 일치하므로
+# 어느 노드가 source/sink 인지는 이 계산이 독립적으로 확인한다.
+SIGN = -1.0
+
 ka, kb, Oa, Ob = field('source/parent_pristine')
-rP, rO = ring_field('source/parent_pristine', NODES)
-rO = SIGN * rO
 Oa, Ob = SIGN * Oa, SIGN * Ob
-INS = [NODES[0], NODES[1]]                      # χ=+1 하나, χ=−1 하나
+INS = [NODES[0], NODES[1]]                     # χ=+1 하나, χ=−1 하나
 lka, lkb, lOa, lOb = local_field('source/parent_pristine', INS)
 lOa, lOb = SIGN * lOa, SIGN * lOb
 
-RED, BLU = '#d62728', '#1f77b4'
-ARROW = '#3b8fd4'
-
-
+RED, BLU, ARROW = '#d62728', '#1f77b4', '#3b8fd4'
 QKW = dict(color=ARROW, angles='xy', scale_units='width',
-           headwidth=4.0, headlength=4.0, headaxislength=3.4)
+           headwidth=6.0, headlength=6.5, headaxislength=5.2)
 
 
-def scaled(u, v, lo=8, hi=99, floor=0.18):
+def scaled(u, v, lo=8, hi=99, floor=0.50):
     """길이를 log|Ω| 로 압축한 화살표 성분.
 
     |Ω| 는 노드에서 1/r² 로 발산하고 먼 곳에서는 거의 0 이라 선형 길이로는
@@ -224,69 +212,62 @@ def scaled(u, v, lo=8, hi=99, floor=0.18):
     return u / mm * L, v / mm * L
 
 
-fig, ax = plt.subplots(figsize=(11.0, 7.6))
-st = 3
-A, B = np.meshgrid(ka[::st], kb[::st], indexing='ij')
-SCALE, WIDTH = 30, 0.0022
+FIG = 9.8
+fig, ax = plt.subplots(figsize=(FIG, FIG))
+SCALE, WIDTH = 18, 0.0030
+
+A, B = np.meshgrid(ka, kb, indexing='ij')
 GX, GY = A.ravel(), B.ravel()
-GU, GV = (c.ravel() for c in scaled(Oa[::st, ::st].copy(), Ob[::st, ::st].copy()))
+GU, GV = (c.ravel() for c in scaled(Oa.copy(), Ob.copy()))
 
-# 노드 최근접 화살표.  격자(간격 0.012)는 monopole 영역(r<=0.0008)을 표본조차
-# 못 하므로, 노드마다 실측 링(r = 0.0006, 0.0025 / 각 8방향, 링평균=국소배경을
-# 뺀 값)을 같은 quiver 에 넣는다.  규격이 완전히 같아야 하므로 성분 스케일링도
-# 격자와 같은 scaled() 를 쓴다.
-ALEN = (ka[-1] - ka[0]) / SCALE
-NX, NY = rP[:, 0], rP[:, 1]
-NU, NV = scaled(rO[:, 0].copy(), rO[:, 1].copy(), lo=2, hi=98, floor=0.55)
-
-# 노드 화살표와 겹치는 격자 화살표는 뺀다 (선분 표본 사이 최소거리로 판정).
-# 데이터 단위는 x,y 축척이 달라 인치로 환산해 시각적 거리로 잰다.
-IX, IY = (ka[-1] - ka[0]) / 11.0, (kb[-1] - kb[0]) / 7.6
+# 노드 근처에 화살표가 몰리지 않도록, 전체 장에는 규칙 격자만 그린다.
+# monopole 구조(링)는 확대 인셋에서만 보여준다 — 주 축척에서는 어차피
+# monopole 영역(r<=0.0008)이 2~3 픽셀이라 뭉칠 수밖에 없다.
+ALEN = 2 * KMAX / SCALE
+INCH = 2 * KMAX / FIG
 t = np.linspace(0, 1, 6)[:, None]
 G = np.stack([GX + GU * ALEN * t, GY + GV * ALEN * t], -1).transpose(1, 0, 2)
-N = np.stack([NX + NU * ALEN * t, NY + NV * ALEN * t], -1).reshape(-1, 2)
-d = np.hypot((G[:, :, None, 0] - N[None, None, :, 0]) / IX,
-             (G[:, :, None, 1] - N[None, None, :, 1]) / IY)
-keep = d.min(axis=(1, 2)) > 0.085              # 0.085 inch ≈ 6 pt
+N = np.array([[a, bb] for a, bb, _ in NODES])
+d = np.hypot(G[:, :, None, 0] - N[None, None, :, 0],
+             G[:, :, None, 1] - N[None, None, :, 1]) / INCH
+keep = d.min(axis=(1, 2)) > 0.11               # 노드 표식을 가리지 않게
+
 ax.quiver(GX[keep], GY[keep], GU[keep], GV[keep],
           scale=SCALE, width=WIDTH, zorder=2, **QKW)
-ax.quiver(NX, NY, NU, NV, scale=SCALE, width=WIDTH, zorder=9, **QKW)
 
-# 노드마다 화살표 하나로 요약한다.  링을 촘촘히 그리면 극에 뭉쳐 읽히지
-# 않고, 어차피 근거리 장은 완전히 방사형이라 (배경 제거 후 r=0.0006 에서
-# 바깥/안쪽 100 %) 부호 하나로 정보가 다 담긴다.
-# 방향은 Γ 에서 멀어지는 쪽으로 통일했고, 라벨은 그 화살표 바깥에 둔다.
-LBL = 0.050
+LBL = 0.062
 for n, (a, bb, c) in enumerate(NODES):
     u = np.array([a, bb]) / np.hypot(a, bb)
-    ax.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
-            mec='white', mew=1.6, zorder=10)
+    ax.plot(a, bb, 'o', ms=16, color=RED if c > 0 else BLU,
+            mec='white', mew=1.8, zorder=10)
     ax.annotate('$W_%d$' % (n + 1), xy=(a + u[0] * LBL, bb + u[1] * LBL),
-                color='#111111', ha='center', va='center', fontsize=17,
-                fontweight='bold', zorder=10)
+                color='black', ha='center', va='center', fontsize=30,
+                fontweight='bold', zorder=11,
+                path_effects=[pe.withStroke(linewidth=5, foreground='white')])
 
-# 확대 인셋 — 노드가 없는 가운데 세로 띠에 두고 연결선으로 잇는다
+# 확대 인셋 — 노드가 없는 가운데 세로 띠
 for (a, bb, c), xa, xb, ua, ub, loc in zip(
         INS, lka, lkb, lOa, lOb,
-        ([0.385, 0.605, 0.225, 0.285], [0.385, 0.090, 0.225, 0.285])):
+        ([0.370, 0.625, 0.260, 0.260], [0.370, 0.115, 0.260, 0.260])):
     axi = ax.inset_axes(loc, zorder=12)
-    axi.set_facecolor('white')
-    axi.patch.set_alpha(1.0)
+    axi.set_facecolor('white'); axi.patch.set_alpha(1.0)
     A2, B2 = np.meshgrid(xa, xb, indexing='ij')
-    su, sv = scaled(ua.copy(), ub.copy(), lo=5, hi=95, floor=0.48)
-    axi.quiver(A2, B2, su, sv, scale=13, width=0.0085, **QKW)
-    axi.plot(a, bb, 'o', ms=15, color=RED if c > 0 else BLU,
+    su, sv = scaled(ua.copy(), ub.copy(), lo=5, hi=95, floor=0.70)
+    axi.quiver(A2, B2, su, sv, scale=8.5, width=0.0090, **QKW)
+    axi.plot(a, bb, 'o', ms=16, color=RED if c > 0 else BLU,
              mec='white', mew=2.0, zorder=6)
     axi.set_xlim(xa[0], xa[-1]); axi.set_ylim(xb[0], xb[-1])
     axi.set_xticks([]); axi.set_yticks([])
     for sp in axi.spines.values():
-        sp.set_color('#555555'); sp.set_linewidth(1.4)
-    ax.indicate_inset_zoom(axi, edgecolor='#555555', alpha=0.95, lw=1.3)
+        sp.set_color('#555555'); sp.set_linewidth(1.5)
+    ax.indicate_inset_zoom(axi, edgecolor='#555555', alpha=0.95, lw=1.4)
 
-ax.set_xlim(ka[0], ka[-1]); ax.set_ylim(kb[0], kb[-1])
+ax.set_xlim(-KMAX, KMAX); ax.set_ylim(-KMAX, KMAX)
+ax.set_aspect('equal', adjustable='box')
 ax.set_xlabel('$k_a$  (reduced)', fontweight='bold')
 ax.set_ylabel('$k_b$  (reduced)', fontweight='bold')
 for lab in ax.get_xticklabels() + ax.get_yticklabels():
     lab.set_fontweight('bold')
 fig.savefig('figs/fig9_berry_field.png')
-print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d' % (len(ka), len(kb), lka.shape[1], lkb.shape[1]))
+print('fig9 저장.  주 격자 %d x %d,  인셋 %d x %d (반경 %.5f)'
+      % (len(ka), len(kb), lka.shape[1], lkb.shape[1], INS_R))
