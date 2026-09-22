@@ -1,0 +1,116 @@
+# hydrostatic −1% (`source/hydro_m1`) — band 17–18 Weyl phonon 탐색
+
+동료 제공 구조. parent_pristine 을 세 축 모두 같은 비율로 압축한 것.
+**Weyl phonon 있다. 서로 다른 두 계열이다.**
+
+> 이 문서의 chirality 절대부호는 Simphony `WeylChirality_calc` 를 기준으로 한다.
+> 자체 sphere flux(`scripts/sphere_chirality.py`)는 전체 부호 규약이 Simphony 와
+> 반대이므로(`results/node_audit/SUMMARY.md`) 상대부호와 반지름 안정성만 본다.
+
+## 1. 구조 확인 — 진짜 등방 압축이 맞다
+
+| | a₁ | a₂ | a₃ | 부피 |
+|---|---|---|---|---|
+| parent_pristine | 5.20303 | 4.99695 | 5.01897 | — |
+| hydro_m1 | 5.15121 | 4.94680 | 4.96880 | — |
+| 비 | 0.990040 | 0.989964 | 0.990004 | 0.970307 |
+| strain | **−0.996 %** | **−1.004 %** | **−1.000 %** | **−2.969 %** |
+
+세 축 불일치가 0.008 %p 이내다. `results/weyl_trend/SUMMARY.md` 가 지적한
+m1/p1 계열의 비등방 오염(12~23 % 상대 불일치)이 여기에는 없다.
+
+spglib: **Pca2₁ (No.29)**. 거울면이 되는 지표 `k1, k2` (chirality 0 강제),
+편극축 지표 `k3`. **parent_pristine 과 같은 축 규약이다** — 그대로 비교해도 된다.
+
+## 2. 찾은 노드
+
+탐색: 편극평면 `k3=0` 201×201 → 후보 1개, 기약 쐐기 N=61 → 국소최소 47개를
+**전부** 미세화 (CLAUDE.md 의 "gap 순위로 자르지 말 것" 경고 준수).
+42개는 거울면으로 배수, 3개는 `k3=0.5` nodal plane 으로 배수(대칭보호, χ=0),
+남은 2개가 아래다.
+
+| | **(a) 편극평면 계열** | **(b) 일반위치 계열** |
+|---|---|---|
+| 위치 (환산) | **(0.1804787, 0.0717123, 0)** | **(0.2515753, 0.3939171, 0.4290305)** |
+| gap | 1.6e-14 THz | 2.1e-14 THz |
+| 주파수 | **10.950607 THz = 45.288 meV** | **12.011569 THz = 49.676 meV** |
+| 궤도 | 4점 `(±k1, ±k2, 0)` | 8점 `(±k1, ±k2, ±k3)` |
+| 자체 sphere flux (R=0.002/0.004/0.008 1/Å) | **−1 / −1 / −1** | **+1 / +1 / +1** |
+| tilt parameter T | **2.303** | **8.582** |
+| 콘 주축 속도 (THz·Å) | 0.202 / 0.446 / 1.180 | 0.092 / 0.225 / 1.128 |
+| 종류 | type-II | 강한 type-II |
+
+(b)는 거울지표 `k1`, `k2` 어느 쪽도 0/0.5 가 아니고, 편극축 `k3 = 0.42903` 이
+nodal plane `k3 = 0.5` 에서 **0.0710 환산 = 0.0897 1/Å** 떨어져 있다. 완전 일반위치다.
+
+두 노드 모두 tilt/콘 적합이 h = 1e−4 … 3e−3 1/Å 전 구간에서 T 가 소수점 3자리까지
+불변이다 (`scripts/cone_fit.py`). 즉 좌표가 정확하고 분산이 선형이다 → 단순 Weyl(|χ|=1).
+
+## 3. parent 대비 달라진 것 — 두 가지가 크다
+
+### 3.1 편극축 삼중항이 하나로 합쳐졌다 (12개 → 4개)
+
+parent_pristine 은 같은 `(k1,k2)` 위에 **세 개**가 편극축 방향으로
+`k3 = −0.0049, 0, +0.0049` 로 늘어서 있어 계열 전체가 12개였다
+(`results/parent_pristine/SUMMARY.md` §5). 직접 다시 재서 확인했다 —
+`(k1,k2)` 를 매 `k3` 마다 최소화하면서 선을 따라가면:
+
+| k3 | parent gap | hydro −1% gap |
+|---|---|---|
+| 0.0000 | 1.2e-14 | 1.6e-14 |
+| 0.0010 | **6.0e-06** | **5.1e-04** |
+| 0.0020 | 1.0e-05 | 1.0e-03 |
+| 0.0040 | 8.5e-06 | 2.0e-03 |
+| 0.0049 | **3.1e-07** ← 두 번째 노드 | 2.5e-03 |
+| 0.0100 | 1.9e-04 | 5.1e-03 |
+
+parent 는 `k3=0.0049` 에 두 번째 골이 뚜렷하고 그 사이 장벽이 1.2e-05 밖에 안 된다.
+hydro −1% 는 `k3=0` 에서 0.02 까지 **단조 선형 증가**하고, `k3=0.001` 의 gap 이
+parent 의 **85배**다. 위성 노드가 없어졌다.
+
+자체 sphere flux 가 이를 독립 확인한다: parent 는 R=0.008 1/Å 에서 `+1 → −1` 로
+뒤집힌다(위성 두 개가 구 안에 들어온다). hydro −1% 는 세 반지름 모두 −1 로 안정하다.
+
+### 3.2 콘이 편극축 방향으로 열렸다 (quasi-2D 해소)
+
+같은 방법·같은 수렴 검사로 두 구조를 쟀다 (`scripts/cone_fit.py`).
+
+| | 편극축 속도 | 면내 최대 속도 | 비 | T |
+|---|---|---|---|---|
+| parent_pristine | **0.0026** THz·Å | 0.911 | **1 / 350** | 2.752 |
+| hydro −1% | **0.202** THz·Å | 1.180 | **1 / 5.8** | 2.303 |
+
+느린 주축은 두 구조 모두 cartesian **y**, 즉 편극축(a₃)이다. 등방 −1% 압축이
+이 방향 속도를 **약 78배** 키운다. 과기울기도 2.752 → 2.303 으로 완화된다.
+
+> parent 의 `T = 2.752`, `v_polar/v_in-plane = 1/350` 은 `results/parent_pristine/SUMMARY.md`
+> §16 의 값을 재현한 것이다. 단, 이 적합은 노드 좌표에 민감하다 —
+> `pn.in` 에 적힌 (0.1464400, 0.0710381, 0) 은 사실 `k3=0.0049` 위성 쪽 좌표라
+> `k3=0` 노드에 쓰면 작은 h 에서 T 가 1.10~2.73 으로 요동친다.
+> 여기서는 `k3=0` 노드를 다시 미세화한 (0.1464927, 0.0708493, 0) 을 썼다.
+
+## 4. 남은 것
+
+- Simphony `WeylChirality_calc` 로 (a) 4점, (b) 8점의 절대 chirality 확정 — 진행 중.
+- parent_pristine 의 쐐기 N=61 재스캔 — parent 에도 (b) 같은 일반위치 계열이 있는지.
+  기존 기록은 N=41 이고 거기에는 없었다. (b) 좌표를 parent 해밀토니안에서 미세화하면
+  `k3=0.5` nodal plane 으로 배수된다(gap 2.3e-08) — 즉 parent 에는 같은 자리에
+  노드가 없고 nodal plane 비탈만 있다. N=61 결과로 확정한다.
+- CLAUDE.md 의 경고대로, **이 구조에 대해서도 "노드는 이 둘뿐" 이라고 말하지 않는다.**
+  쐐기 N=61 · 임계 gap 0.02 THz 에서 국소최소로 잡힌 것이 이 둘이라는 뜻이다.
+
+## 재현
+
+```bash
+python3 scripts/weyl_scan.py --dir source/hydro_m1 --band 17 --mode sym
+python3 scripts/weyl_scan.py --dir source/hydro_m1 --band 17 --mode plane --fixed-index 2 --fixed-value 0.0 -N 201
+python3 scripts/weyl_scan.py --dir source/hydro_m1 --band 17 --mode wedge -N 61
+python3 scripts/weyl_scan.py --dir source/hydro_m1 --band 17 --mode refine --seed 0.1800 0.0725 0.0
+python3 scripts/cone_fit.py        source/hydro_m1 0.1804787 0.0717123 0.0
+python3 scripts/sphere_chirality.py source/hydro_m1 0.1804787 0.0717123 0.0
+```
+`--fixed-index` 는 **0-based** 다 (출력되는 지표 번호는 1-based). 편극축 지표가
+1-based 로 3 이면 `--fixed-index 2` 를 준다.
+
+Simphony 쪽은 `pn_weylchirality_polarplane.in`, `pn_weylchirality_general.in` 참조.
+`SELECTED_OCCUPIED_BANDS 1-17`, `LOTO_method='phonopy'`, `NP = 2` 로 맞춰져 있다.
