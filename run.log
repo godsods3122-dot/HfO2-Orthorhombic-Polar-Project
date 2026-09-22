@@ -1,0 +1,2 @@
+timeout: failed to run command '../../simphony/src/pn.x': No such file or directory
+PN_EXIT=127
