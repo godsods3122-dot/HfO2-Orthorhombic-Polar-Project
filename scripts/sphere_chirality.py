@@ -18,7 +18,10 @@ chirality 다.
 
 사용법
 ------
-    python3 scripts/sphere_chirality.py <dir> k1 k2 k3
+    python3 scripts/sphere_chirality.py <dir> k1 k2 k3 [nocc]
+
+nocc 는 "이 밴드까지를 점유로 본다"는 1-based 밴드 번호 (기본 17).
+band N-N+1 사이의 노드를 보려면 nocc = N 을 준다.
 """
 import sys
 import numpy as np
@@ -30,10 +33,12 @@ NOCC = 17
 
 
 def main():
+    global NOCC
     if len(sys.argv) < 5:
         sys.exit(__doc__)
     d = sys.argv[1]
     k0 = np.array([float(x) for x in sys.argv[2:5]])
+    NOCC = int(sys.argv[5]) if len(sys.argv) > 5 else 17
     ph = get_ph(d, (2, 2, 2))
     B = np.linalg.inv(ph.primitive.cell).T * 2 * np.pi
     Binv = np.linalg.inv(B)
