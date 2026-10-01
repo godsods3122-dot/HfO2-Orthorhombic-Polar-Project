@@ -111,24 +111,32 @@
         sx_r_mpi=0d0; sy_r_mpi=0d0; sz_r_mpi=0d0
      endif
 
-     !> ceiling if K2D_vec are positive, floor if K2D_vec are negative
-     do i  = 1, 2
-         if (K2D_vec1(i)>0) then
-               K2D_vec_a(i)= ceiling(K2D_vec1(i))
-         else
-               K2D_vec_a(i)= floor(K2D_vec1(i))
-         endif
+     !> QPI (joint DOS) needs the full BZ, so there the KPLANE_SLAB vectors are
+     !> rounded outwards to whole reciprocal lattice vectors.  For a plain
+     !> SlabArc/SlabSpintexture run this rounding silently replaces the window
+     !> the user asked for by a full BZ cell, so do it only when QPI is on.
+     if (SlabQPI_kplane_calc) then
+        do i  = 1, 2
+            if (K2D_vec1(i)>0) then
+                  K2D_vec_a(i)= ceiling(K2D_vec1(i))
+            else
+                  K2D_vec_a(i)= floor(K2D_vec1(i))
+            endif
 
-         if (K2D_vec2(i)>0) then
-            K2D_vec_b(i)= ceiling(K2D_vec2(i))
-         else
-            K2D_vec_b(i)= floor(K2D_vec2(i))
+            if (K2D_vec2(i)>0) then
+               K2D_vec_b(i)= ceiling(K2D_vec2(i))
+            else
+               K2D_vec_b(i)= floor(K2D_vec2(i))
+            endif
+         enddo
+         if (cpuid==0) then
+            write(stdout, '(a)')'WARNING : Your setting of KPLANE_SLAB has been modified because QPI calculation requires the information of the full BZ. '
+            write(stdout, '((a, 2f8.4))')'The first modified vector in QPI: ', K2D_vec_a
+            write(stdout, '((a, 2f8.4))')'The second modified vector in QPI: ', K2D_vec_b
          endif
-      enddo 
-      if (cpuid==0) then
-         write(stdout, '(a)')'WARNING : Your setting of KPLANE_SLAB has been modified because QPI calculation requires the information of the full BZ. '
-         write(stdout, '((a, 2f8.4))')'The first modified vector in QPI: ', K2D_vec_a
-         write(stdout, '((a, 2f8.4))')'The second modified vector in QPI: ', K2D_vec_b
+      else
+         K2D_vec_a= K2D_vec1
+         K2D_vec_b= K2D_vec2
       endif
 
 
@@ -211,7 +219,15 @@
      call ensure_LR_realspace()
 
 
-        call ham_qlayer2qlayer(k,H00,H01)
+        !> deal with phonon system: the LO-TO corrected layer Hamiltonian is a
+        !> different routine, exactly as surfstat.f90 branches.  Without this the
+        !> ensure_LR_realspace() call above has no effect and the arc spectrum is
+        !> computed with no LO-TO at all.
+        if (index(Particle,'phonon')/=0.and.LOTO_correction) then
+           call ham_qlayer2qlayer_LOTO(k,H00,H01)
+        else
+           call ham_qlayer2qlayer(k,H00,H01)
+        endif
         call now(time2)
         time_q= time_q+time2-time1
 

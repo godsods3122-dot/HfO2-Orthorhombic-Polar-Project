@@ -247,9 +247,16 @@
      dos_bulk=log(abs(dos_bulk_mpi)+eps9)
      do ikp=1, knv2
         do j=1, omeganum
-           dos_l_only(ikp, j)= dos_l_mpi(ikp, j)- dos_bulk_mpi(ikp, j)
+           !> dos_l/dos_r sum over one surface unit cell (NtopOrbitals /
+           !> NBottomOrbitals), while dos_bulk sums over the whole principal
+           !> layer (Ndim = Np*Num_wann).  Rescale before subtracting, otherwise
+           !> the bulk is over-subtracted by a factor Np and every _only value
+           !> is clipped to eps9.
+           dos_l_only(ikp, j)= dos_l_mpi(ikp, j)- dos_bulk_mpi(ikp, j) &
+                               * dble(NtopOrbitals)/dble(Ndim)
            if (dos_l_only(ikp, j)<0) dos_l_only(ikp, j)=eps9
-           dos_r_only(ikp, j)= dos_r_mpi(ikp, j)- dos_bulk_mpi(ikp, j)
+           dos_r_only(ikp, j)= dos_r_mpi(ikp, j)- dos_bulk_mpi(ikp, j) &
+                               * dble(NBottomOrbitals)/dble(Ndim)
            if (dos_r_only(ikp, j)<0) dos_r_only(ikp, j)=eps9
         enddo
      enddo
